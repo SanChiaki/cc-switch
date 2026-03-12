@@ -51,10 +51,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build Windows MSI
-        shell: pwsh
-        run: |
-          $configOverride = '{"bundle":{"createUpdaterArtifacts":false}}'
-          pnpm tauri build --bundles msi --config $configOverride
+        run: pnpm tauri build --config src-tauri/tauri.test.windows.conf.json
 
       - name: Prepare Windows artifacts
         shell: pwsh
