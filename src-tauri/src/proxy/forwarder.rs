@@ -8,7 +8,7 @@ use super::{
     failover_switch::FailoverSwitchManager,
     log_codes::fwd as log_fwd,
     provider_router::ProviderRouter,
-    providers::{get_adapter, ProviderAdapter, ProviderType},
+    providers::{extract_custom_request_headers, get_adapter, ProviderAdapter, ProviderType},
     thinking_budget_rectifier::{rectify_thinking_budget, should_rectify_thinking_budget},
     thinking_rectifier::{
         normalize_thinking_type, rectify_anthropic_request, should_rectify_thinking_signature,
@@ -830,6 +830,18 @@ impl RequestForwarder {
         let proxy_config = provider.meta.as_ref().and_then(|m| m.proxy_config.as_ref());
         let client = super::http_client::get_for_provider(proxy_config);
         let mut request = client.post(&url);
+        let mut custom_headers =
+            extract_custom_request_headers(provider).map_err(ProxyError::ConfigError)?;
+        let custom_anthropic_beta = if adapter.name() == "Claude" {
+            custom_headers.remove("anthropic-beta")
+        } else {
+            None
+        };
+        let custom_anthropic_version = if adapter.name() == "Claude" {
+            custom_headers.remove("anthropic-version")
+        } else {
+            None
+        };
 
         // 只有当 timeout > 0 时才设置请求超时
         // Duration::ZERO 在 reqwest 中表示"立刻超时"而不是"禁用超时"
@@ -854,7 +866,18 @@ impl RequestForwarder {
         // 如果客户端发送的 beta 标记中没有包含 claude-code-20250219，需要补充
         if adapter.name() == "Claude" {
             const CLAUDE_CODE_BETA: &str = "claude-code-20250219";
-            let beta_value = if let Some(beta) = headers.get("anthropic-beta") {
+            let beta_value = if let Some(beta) = custom_anthropic_beta {
+                let beta_str = beta.to_str().map_err(|e| {
+                    ProxyError::ConfigError(format!("requestHeaders.anthropic-beta 无效: {e}"))
+                })?;
+                if beta_str.is_empty() {
+                    CLAUDE_CODE_BETA.to_string()
+                } else if beta_str.contains(CLAUDE_CODE_BETA) {
+                    beta_str.to_string()
+                } else {
+                    format!("{CLAUDE_CODE_BETA},{beta_str}")
+                }
+            } else if let Some(beta) = headers.get("anthropic-beta") {
                 if let Ok(beta_str) = beta.to_str() {
                     // 检查是否已包含 claude-code-20250219
                     if beta_str.contains(CLAUDE_CODE_BETA) {
@@ -897,12 +920,23 @@ impl RequestForwarder {
         // anthropic-version 统一处理（仅 Claude）：优先使用客户端的版本号，否则使用默认值
         // 注意：只设置一次，避免重复
         if adapter.name() == "Claude" {
-            let version_str = headers
-                .get("anthropic-version")
-                .and_then(|v| v.to_str().ok())
-                .unwrap_or("2023-06-01");
-            request = request.header("anthropic-version", version_str);
+            if let Some(version_value) = custom_anthropic_version {
+                request = request.header("anthropic-version", version_value);
+            } else {
+                let version_str = headers
+                    .get("anthropic-version")
+                    .and_then(|v| v.to_str().ok())
+                    .unwrap_or("2023-06-01");
+                request = request.header("anthropic-version", version_str);
+            }
         }
+
+        if !custom_headers.is_empty() {
+            request = request.headers(custom_headers);
+        }
+
+        // 自定义 Header 允许覆盖大多数默认值，但流式解析必须保持 identity。
+        request = request.header("accept-encoding", "identity");
 
         // 输出请求信息日志
         let tag = adapter.name();
@@ -1108,7 +1142,161 @@ fn summarize_text_for_log(text: &str, max_chars: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::{
+        database::Database,
+        provider::{Provider, ProviderMeta},
+    };
+    use axum::{
+        extract::State,
+        http::{HeaderMap, StatusCode, Uri},
+        routing::post,
+        Json, Router,
+    };
     use serde_json::json;
+    use std::{collections::HashMap, sync::Arc, time::Duration};
+    use tokio::sync::{mpsc, RwLock};
+
+    #[derive(Debug)]
+    struct CapturedRequest {
+        path: String,
+        query: Option<String>,
+        headers: HashMap<String, String>,
+    }
+
+    async fn capture_request(
+        State(tx): State<mpsc::UnboundedSender<CapturedRequest>>,
+        uri: Uri,
+        headers: HeaderMap,
+    ) -> (StatusCode, Json<serde_json::Value>) {
+        let headers = headers
+            .iter()
+            .filter_map(|(name, value)| {
+                value
+                    .to_str()
+                    .ok()
+                    .map(|value| (name.as_str().to_string(), value.to_string()))
+            })
+            .collect();
+
+        tx.send(CapturedRequest {
+            path: uri.path().to_string(),
+            query: uri.query().map(ToString::to_string),
+            headers,
+        })
+        .expect("capture request");
+
+        (StatusCode::OK, Json(json!({ "ok": true })))
+    }
+
+    async fn start_mock_server() -> (String, mpsc::UnboundedReceiver<CapturedRequest>) {
+        let (tx, rx) = mpsc::unbounded_channel();
+        let app = Router::new()
+            .route("/v1/messages", post(capture_request))
+            .route("/v1/chat/completions", post(capture_request))
+            .route("/v1/responses", post(capture_request))
+            .route("/responses", post(capture_request))
+            .with_state(tx);
+
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+            .await
+            .expect("bind mock server");
+        let addr = listener.local_addr().expect("mock server addr");
+
+        tokio::spawn(async move {
+            axum::serve(listener, app).await.expect("run mock server");
+        });
+
+        (format!("http://{addr}"), rx)
+    }
+
+    fn build_forwarder() -> RequestForwarder {
+        let db = Arc::new(Database::memory().expect("init memory db"));
+        let router = Arc::new(ProviderRouter::new(db.clone()));
+        let failover_manager = Arc::new(FailoverSwitchManager::new(db));
+
+        RequestForwarder::new(
+            router,
+            30,
+            Arc::new(RwLock::new(ProxyStatus::default())),
+            Arc::new(RwLock::new(HashMap::new())),
+            failover_manager,
+            None,
+            "test-provider".to_string(),
+            60,
+            120,
+            RectifierConfig::default(),
+            OptimizerConfig::default(),
+        )
+    }
+
+    fn build_claude_provider(
+        base_url: &str,
+        api_format: Option<&str>,
+        auth_mode: Option<&str>,
+        request_headers: HashMap<String, String>,
+    ) -> Provider {
+        let mut settings = json!({
+            "env": {
+                "ANTHROPIC_BASE_URL": base_url,
+                "ANTHROPIC_AUTH_TOKEN": "sk-claude-test"
+            }
+        });
+
+        if let Some(auth_mode) = auth_mode {
+            settings["auth_mode"] = json!(auth_mode);
+        }
+
+        let mut provider = Provider::with_id(
+            format!("claude-{}", api_format.unwrap_or("anthropic")),
+            "Claude Test".to_string(),
+            settings,
+            None,
+        );
+        provider.meta = Some(ProviderMeta {
+            api_format: api_format.map(ToString::to_string),
+            request_headers: Some(request_headers),
+            ..ProviderMeta::default()
+        });
+        provider
+    }
+
+    fn build_codex_provider(base_url: &str, request_headers: HashMap<String, String>) -> Provider {
+        let mut provider = Provider::with_id(
+            "codex-test".to_string(),
+            "Codex Test".to_string(),
+            json!({
+                "base_url": base_url,
+                "env": {
+                    "OPENAI_API_KEY": "sk-codex-test"
+                }
+            }),
+            None,
+        );
+        provider.meta = Some(ProviderMeta {
+            request_headers: Some(request_headers),
+            ..ProviderMeta::default()
+        });
+        provider
+    }
+
+    async fn recv_captured_request(
+        rx: &mut mpsc::UnboundedReceiver<CapturedRequest>,
+    ) -> CapturedRequest {
+        tokio::time::timeout(Duration::from_secs(2), rx.recv())
+            .await
+            .expect("wait for captured request")
+            .expect("captured request")
+    }
+
+    fn unwrap_forward_result(
+        result: Result<ForwardResult, ForwardError>,
+        context: &str,
+    ) -> ForwardResult {
+        match result {
+            Ok(value) => value,
+            Err(err) => panic!("{context}: {}", err.error),
+        }
+    }
 
     #[test]
     fn single_provider_retryable_log_uses_single_provider_code() {
@@ -1173,5 +1361,179 @@ mod tests {
         let summary = summarize_text_for_log("line1\n\n line2   line3", 12);
 
         assert_eq!(summary, "line1 line2...");
+    }
+
+    #[tokio::test]
+    async fn forward_claude_anthropic_sends_custom_headers_to_upstream() {
+        let (base_url, mut rx) = start_mock_server().await;
+        let provider = build_claude_provider(
+            &base_url,
+            Some("anthropic"),
+            None,
+            HashMap::from([
+                ("x-request-tag".to_string(), "claude-anthropic".to_string()),
+                ("anthropic-beta".to_string(), "relay-2026-03".to_string()),
+                ("anthropic-version".to_string(), "2025-02-19".to_string()),
+            ]),
+        );
+        let forwarder = build_forwarder();
+
+        let result = unwrap_forward_result(
+            forwarder
+                .forward_with_retry(
+                    &AppType::Claude,
+                    "/v1/messages",
+                    json!({
+                        "model": "claude-test",
+                        "max_tokens": 1,
+                        "messages": [{"role": "user", "content": "hi"}]
+                    }),
+                    HeaderMap::new(),
+                    vec![provider.clone()],
+                )
+                .await,
+            "forward anthropic request",
+        );
+
+        assert_eq!(result.response.status(), StatusCode::OK);
+
+        let captured = recv_captured_request(&mut rx).await;
+        assert_eq!(captured.path, "/v1/messages");
+        assert_eq!(captured.query.as_deref(), Some("beta=true"));
+        assert_eq!(
+            captured.headers.get("x-request-tag").map(String::as_str),
+            Some("claude-anthropic")
+        );
+        let beta = captured
+            .headers
+            .get("anthropic-beta")
+            .expect("anthropic-beta header");
+        assert!(beta.contains("claude-code-20250219"));
+        assert!(beta.contains("relay-2026-03"));
+        assert_eq!(
+            captured
+                .headers
+                .get("anthropic-version")
+                .map(String::as_str),
+            Some("2025-02-19")
+        );
+        assert_eq!(
+            captured.headers.get("authorization").map(String::as_str),
+            Some("Bearer sk-claude-test")
+        );
+    }
+
+    #[tokio::test]
+    async fn forward_claude_openai_chat_sends_custom_headers_to_upstream() {
+        let (base_url, mut rx) = start_mock_server().await;
+        let provider = build_claude_provider(
+            &base_url,
+            Some("openai_chat"),
+            Some("bearer_only"),
+            HashMap::from([
+                (
+                    "x-request-tag".to_string(),
+                    "claude-openai-chat".to_string(),
+                ),
+                ("anthropic-version".to_string(), "2025-02-19".to_string()),
+            ]),
+        );
+        let forwarder = build_forwarder();
+
+        let result = unwrap_forward_result(
+            forwarder
+                .forward_with_retry(
+                    &AppType::Claude,
+                    "/v1/messages",
+                    json!({
+                        "model": "claude-test",
+                        "max_tokens": 1,
+                        "messages": [{"role": "user", "content": "hi"}]
+                    }),
+                    HeaderMap::new(),
+                    vec![provider.clone()],
+                )
+                .await,
+            "forward openai-chat request",
+        );
+
+        assert_eq!(result.response.status(), StatusCode::OK);
+
+        let captured = recv_captured_request(&mut rx).await;
+        assert_eq!(captured.path, "/v1/chat/completions");
+        assert_eq!(captured.query, None);
+        assert_eq!(
+            captured.headers.get("x-request-tag").map(String::as_str),
+            Some("claude-openai-chat")
+        );
+        assert_eq!(
+            captured
+                .headers
+                .get("anthropic-version")
+                .map(String::as_str),
+            Some("2025-02-19")
+        );
+        let beta = captured
+            .headers
+            .get("anthropic-beta")
+            .expect("anthropic-beta header");
+        assert!(beta.contains("claude-code-20250219"));
+        assert_eq!(
+            captured.headers.get("authorization").map(String::as_str),
+            Some("Bearer sk-claude-test")
+        );
+    }
+
+    #[tokio::test]
+    async fn forward_codex_sends_custom_headers_to_upstream() {
+        let (base_url, mut rx) = start_mock_server().await;
+        let provider = build_codex_provider(
+            &base_url,
+            HashMap::from([
+                ("x-request-tag".to_string(), "codex-responses".to_string()),
+                ("openai-organization".to_string(), "acme".to_string()),
+            ]),
+        );
+        let forwarder = build_forwarder();
+
+        let result = unwrap_forward_result(
+            forwarder
+                .forward_with_retry(
+                    &AppType::Codex,
+                    "/v1/responses",
+                    json!({
+                        "model": "gpt-5.1-codex",
+                        "input": [{"role": "user", "content": "hi"}]
+                    }),
+                    HeaderMap::new(),
+                    vec![provider.clone()],
+                )
+                .await,
+            "forward codex request",
+        );
+
+        assert_eq!(result.response.status(), StatusCode::OK);
+
+        let captured = recv_captured_request(&mut rx).await;
+        assert_eq!(captured.path, "/v1/responses");
+        assert_eq!(
+            captured.headers.get("x-request-tag").map(String::as_str),
+            Some("codex-responses")
+        );
+        assert_eq!(
+            captured
+                .headers
+                .get("openai-organization")
+                .map(String::as_str),
+            Some("acme")
+        );
+        assert_eq!(
+            captured.headers.get("authorization").map(String::as_str),
+            Some("Bearer sk-codex-test")
+        );
+        assert_eq!(
+            captured.headers.get("accept-encoding").map(String::as_str),
+            Some("identity")
+        );
     }
 }

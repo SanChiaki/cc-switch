@@ -747,6 +747,8 @@
     "authFieldAuthToken": "ANTHROPIC_AUTH_TOKEN (Default)",
     "authFieldApiKey": "ANTHROPIC_API_KEY",
     "authFieldHint": "Select the authentication env variable name for the config",
+    "requestHeaders": "Request Headers (JSON, optional)",
+    "requestHeadersHint": "These headers will be appended automatically when CC Switch calls the upstream model service.",
     "apiHintResponses": "💡 Fill in OpenAI Responses API compatible service endpoint, avoid trailing slash",
     "anthropicDefaultHaikuModel": "Default Haiku Model",
     "anthropicDefaultSonnetModel": "Default Sonnet Model",

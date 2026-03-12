@@ -9,7 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import EndpointSpeedTest from "./EndpointSpeedTest";
-import { ApiKeySection, EndpointField } from "./shared";
+import { ApiKeySection, EndpointField, RequestHeadersField } from "./shared";
 import type {
   ProviderCategory,
   ClaudeApiFormat,
@@ -43,6 +43,9 @@ interface ClaudeFormFieldsProps {
   shouldShowSpeedTest: boolean;
   baseUrl: string;
   onBaseUrlChange: (url: string) => void;
+  requestHeaders: string;
+  onRequestHeadersChange: (value: string) => void;
+  requestHeadersError?: string;
   isEndpointModalOpen: boolean;
   onEndpointModalToggle: (open: boolean) => void;
   onCustomEndpointsChange?: (endpoints: string[]) => void;
@@ -95,6 +98,9 @@ export function ClaudeFormFields({
   shouldShowSpeedTest,
   baseUrl,
   onBaseUrlChange,
+  requestHeaders,
+  onRequestHeadersChange,
+  requestHeadersError,
   isEndpointModalOpen,
   onEndpointModalToggle,
   onCustomEndpointsChange,
@@ -183,6 +189,12 @@ export function ClaudeFormFields({
           onManageClick={() => onEndpointModalToggle(true)}
         />
       )}
+
+      <RequestHeadersField
+        value={requestHeaders}
+        onChange={onRequestHeadersChange}
+        error={requestHeadersError}
+      />
 
       {/* 端点测速弹窗 */}
       {shouldShowSpeedTest && isEndpointModalOpen && (

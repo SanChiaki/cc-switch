@@ -43,6 +43,8 @@ import type { UniversalProviderPreset } from "@/config/universalProviderPresets"
 import {
   applyTemplateValues,
   hasApiKeyField,
+  formatRequestHeadersConfig,
+  parseRequestHeadersConfig,
 } from "@/utils/providerConfigUtils";
 import { mergeProviderMeta } from "@/utils/providerMetaUtils";
 import { getCodexCustomTemplate } from "@/config/codexTemplates";
@@ -295,6 +297,9 @@ export function ProviderForm({
     if (appId !== "claude") return "anthropic";
     return initialData?.meta?.apiFormat ?? "anthropic";
   });
+  const [requestHeadersText, setRequestHeadersText] = useState<string>(() =>
+    formatRequestHeadersConfig(initialData?.meta?.requestHeaders),
+  );
 
   const handleApiFormatChange = useCallback((format: ClaudeApiFormat) => {
     setLocalApiFormat(format);
@@ -360,6 +365,16 @@ export function ProviderForm({
   useEffect(() => {
     form.reset(defaultValues);
   }, [defaultValues, form]);
+
+  useEffect(() => {
+    setRequestHeadersText(
+      formatRequestHeadersConfig(initialData?.meta?.requestHeaders),
+    );
+  }, [appId, initialData]);
+
+  const requestHeadersError = useMemo(() => {
+    return parseRequestHeadersConfig(requestHeadersText).error;
+  }, [requestHeadersText]);
 
   const presetCategoryLabels: Record<string, string> = useMemo(
     () => ({
@@ -584,6 +599,12 @@ export function ProviderForm({
   const [isCommonConfigModalOpen, setIsCommonConfigModalOpen] = useState(false);
 
   const handleSubmit = (values: ProviderFormData) => {
+    const parsedRequestHeaders = parseRequestHeadersConfig(requestHeadersText);
+    if (parsedRequestHeaders.error) {
+      toast.error(parsedRequestHeaders.error);
+      return;
+    }
+
     if (appId === "claude" && templateValueEntries.length > 0) {
       const validation = validateTemplateValues();
       if (!validation.isValid && validation.missingField) {
@@ -890,6 +911,7 @@ export function ProviderForm({
         localApiKeyField !== "ANTHROPIC_AUTH_TOKEN"
           ? localApiKeyField
           : undefined,
+      requestHeaders: parsedRequestHeaders.headers,
     };
 
     onSubmit(payload);
@@ -995,6 +1017,7 @@ export function ProviderForm({
     setSelectedPresetId(value);
     if (value === "custom") {
       setActivePreset(null);
+      setRequestHeadersText("");
       form.reset(defaultValues);
 
       if (appId === "codex") {
@@ -1033,6 +1056,7 @@ export function ProviderForm({
       const config = preset.config ?? "";
 
       resetCodexConfig(auth, config);
+      setRequestHeadersText("");
 
       form.reset({
         name: preset.nameKey ? t(preset.nameKey) : preset.name,
@@ -1050,6 +1074,7 @@ export function ProviderForm({
       const config = (preset.settingsConfig as any)?.config ?? {};
 
       resetGeminiConfig(env, config);
+      setRequestHeadersText("");
 
       form.reset({
         name: preset.nameKey ? t(preset.nameKey) : preset.name,
@@ -1067,6 +1092,7 @@ export function ProviderForm({
 
       if (preset.category === "omo" || preset.category === "omo-slim") {
         omoDraft.resetOmoDraftState();
+        setRequestHeadersText("");
         form.reset({
           name: preset.category === "omo" ? "OMO" : "OMO Slim",
           websiteUrl: preset.websiteUrl ?? "",
@@ -1078,6 +1104,7 @@ export function ProviderForm({
       }
 
       opencodeForm.resetOpencodeState(config);
+      setRequestHeadersText("");
 
       form.reset({
         name: preset.nameKey ? t(preset.nameKey) : preset.name,
@@ -1104,6 +1131,7 @@ export function ProviderForm({
       });
 
       openclawForm.resetOpenclawState(config);
+      setRequestHeadersText("");
 
       // Update form fields
       form.reset({
@@ -1129,6 +1157,7 @@ export function ProviderForm({
     }
 
     setLocalApiKeyField(preset.apiKeyField ?? "ANTHROPIC_AUTH_TOKEN");
+    setRequestHeadersText("");
 
     form.reset({
       name: preset.nameKey ? t(preset.nameKey) : preset.name,
@@ -1318,6 +1347,9 @@ export function ProviderForm({
             shouldShowSpeedTest={shouldShowSpeedTest}
             baseUrl={baseUrl}
             onBaseUrlChange={handleClaudeBaseUrlChange}
+            requestHeaders={requestHeadersText}
+            onRequestHeadersChange={setRequestHeadersText}
+            requestHeadersError={requestHeadersError}
             isEndpointModalOpen={isEndpointModalOpen}
             onEndpointModalToggle={setIsEndpointModalOpen}
             onCustomEndpointsChange={
@@ -1353,6 +1385,9 @@ export function ProviderForm({
             shouldShowSpeedTest={shouldShowSpeedTest}
             codexBaseUrl={codexBaseUrl}
             onBaseUrlChange={handleCodexBaseUrlChange}
+            requestHeaders={requestHeadersText}
+            onRequestHeadersChange={setRequestHeadersText}
+            requestHeadersError={requestHeadersError}
             isEndpointModalOpen={isCodexEndpointModalOpen}
             onEndpointModalToggle={setIsCodexEndpointModalOpen}
             onCustomEndpointsChange={

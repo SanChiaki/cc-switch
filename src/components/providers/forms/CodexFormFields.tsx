@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
 import EndpointSpeedTest from "./EndpointSpeedTest";
-import { ApiKeySection, EndpointField } from "./shared";
+import { ApiKeySection, EndpointField, RequestHeadersField } from "./shared";
 import type { ProviderCategory } from "@/types";
 
 interface EndpointCandidate {
@@ -22,6 +22,9 @@ interface CodexFormFieldsProps {
   shouldShowSpeedTest: boolean;
   codexBaseUrl: string;
   onBaseUrlChange: (url: string) => void;
+  requestHeaders: string;
+  onRequestHeadersChange: (value: string) => void;
+  requestHeadersError?: string;
   isEndpointModalOpen: boolean;
   onEndpointModalToggle: (open: boolean) => void;
   onCustomEndpointsChange?: (endpoints: string[]) => void;
@@ -49,6 +52,9 @@ export function CodexFormFields({
   shouldShowSpeedTest,
   codexBaseUrl,
   onBaseUrlChange,
+  requestHeaders,
+  onRequestHeadersChange,
+  requestHeadersError,
   isEndpointModalOpen,
   onEndpointModalToggle,
   onCustomEndpointsChange,
@@ -96,6 +102,12 @@ export function CodexFormFields({
           onManageClick={() => onEndpointModalToggle(true)}
         />
       )}
+
+      <RequestHeadersField
+        value={requestHeaders}
+        onChange={onRequestHeadersChange}
+        error={requestHeadersError}
+      />
 
       {/* Codex Model Name 输入框 */}
       {shouldShowModelField && onModelNameChange && (

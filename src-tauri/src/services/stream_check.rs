@@ -12,7 +12,9 @@ use std::time::Instant;
 use crate::app_config::AppType;
 use crate::error::AppError;
 use crate::provider::Provider;
-use crate::proxy::providers::{get_adapter, AuthInfo, AuthStrategy};
+use crate::proxy::providers::{
+    extract_custom_request_headers, get_adapter, AuthInfo, AuthStrategy,
+};
 
 /// 健康状态枚举
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -219,6 +221,7 @@ impl StreamCheckService {
                     &model_to_test,
                     test_prompt,
                     request_timeout,
+                    provider,
                 )
                 .await
             }
@@ -338,6 +341,10 @@ impl StreamCheckService {
         });
 
         let mut request_builder = client.post(&url);
+        let mut custom_headers =
+            extract_custom_request_headers(provider).map_err(AppError::Message)?;
+        let custom_anthropic_beta = custom_headers.remove("anthropic-beta");
+        let custom_anthropic_version = custom_headers.remove("anthropic-version");
 
         if is_openai_chat {
             // OpenAI-compatible: Bearer auth + standard headers only
@@ -349,6 +356,21 @@ impl StreamCheckService {
             // Anthropic native: full Claude CLI headers
             let os_name = Self::get_os_name();
             let arch_name = Self::get_arch_name();
+            const CLAUDE_CODE_BETA: &str = "claude-code-20250219";
+            let beta_value = if let Some(beta) = custom_anthropic_beta {
+                let beta_str = beta.to_str().map_err(|e| {
+                    AppError::Message(format!("Invalid anthropic-beta header: {e}"))
+                })?;
+                if beta_str.is_empty() {
+                    CLAUDE_CODE_BETA.to_string()
+                } else if beta_str.contains(CLAUDE_CODE_BETA) {
+                    beta_str.to_string()
+                } else {
+                    format!("{CLAUDE_CODE_BETA},{beta_str}")
+                }
+            } else {
+                "claude-code-20250219,interleaved-thinking-2025-05-14".to_string()
+            };
 
             request_builder =
                 request_builder.header("authorization", format!("Bearer {}", auth.api_key));
@@ -361,10 +383,7 @@ impl StreamCheckService {
             request_builder = request_builder
                 // Anthropic required headers
                 .header("anthropic-version", "2023-06-01")
-                .header(
-                    "anthropic-beta",
-                    "claude-code-20250219,interleaved-thinking-2025-05-14",
-                )
+                .header("anthropic-beta", beta_value)
                 .header("anthropic-dangerous-direct-browser-access", "true")
                 // Content type headers
                 .header("content-type", "application/json")
@@ -387,6 +406,14 @@ impl StreamCheckService {
                 .header("sec-fetch-mode", "cors")
                 .header("connection", "keep-alive");
         }
+
+        if let Some(version_value) = custom_anthropic_version {
+            request_builder = request_builder.header("anthropic-version", version_value);
+        }
+        if !custom_headers.is_empty() {
+            request_builder = request_builder.headers(custom_headers);
+        }
+        request_builder = request_builder.header("accept-encoding", "identity");
 
         let response = request_builder
             .timeout(timeout)
@@ -424,6 +451,7 @@ impl StreamCheckService {
         model: &str,
         test_prompt: &str,
         timeout: std::time::Duration,
+        provider: &Provider,
     ) -> Result<(u16, String), AppError> {
         let base = base_url.trim_end_matches('/');
         // Codex CLI 的 base_url 语义：base_url 是 API base（可能已包含 /v1 或其他自定义前缀），
@@ -457,8 +485,10 @@ impl StreamCheckService {
         }
 
         for (i, url) in urls.iter().enumerate() {
+            let custom_headers =
+                extract_custom_request_headers(provider).map_err(AppError::Message)?;
             // 严格按照 Codex CLI 请求格式设置 headers
-            let response = client
+            let request_builder = client
                 .post(url)
                 .header("authorization", format!("Bearer {}", auth.api_key))
                 .header("content-type", "application/json")
@@ -468,9 +498,18 @@ impl StreamCheckService {
                     "user-agent",
                     format!("codex_cli_rs/0.80.0 ({os_name} 15.7.2; {arch_name}) Terminal"),
                 )
-                .header("originator", "codex_cli_rs")
-                .timeout(timeout)
-                .json(&body)
+                .header("originator", "codex_cli_rs");
+
+            let request_builder = if custom_headers.is_empty() {
+                request_builder
+            } else {
+                request_builder.headers(custom_headers)
+            }
+            .header("accept-encoding", "identity")
+            .timeout(timeout)
+            .json(&body);
+
+            let response = request_builder
                 .send()
                 .await
                 .map_err(Self::map_request_error)?;

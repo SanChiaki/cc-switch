@@ -103,6 +103,72 @@ export const validateJsonConfig = (
   }
 };
 
+const toHeaderStringValue = (value: unknown): string | null => {
+  if (typeof value === "string") {
+    return value;
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value);
+  }
+  return null;
+};
+
+export const formatRequestHeadersConfig = (
+  headers?: Record<string, string>,
+): string => {
+  if (!headers || Object.keys(headers).length === 0) {
+    return "";
+  }
+  return JSON.stringify(headers, null, 2);
+};
+
+export const parseRequestHeadersConfig = (
+  value: string,
+): {
+  headers?: Record<string, string>;
+  error?: string;
+} => {
+  if (!value.trim()) {
+    return { headers: undefined };
+  }
+
+  try {
+    const parsed = JSON.parse(value);
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return {
+        error: "请求头配置必须是 JSON 对象",
+      };
+    }
+
+    const headers: Record<string, string> = {};
+    for (const [key, rawValue] of Object.entries(parsed)) {
+      const trimmedKey = key.trim();
+      if (!trimmedKey) {
+        return {
+          error: "请求头名称不能为空",
+        };
+      }
+
+      const headerValue = toHeaderStringValue(rawValue);
+      if (headerValue === null) {
+        return {
+          error: `请求头 ${trimmedKey} 的值必须是字符串、数字或布尔值`,
+        };
+      }
+
+      headers[trimmedKey] = headerValue;
+    }
+
+    return {
+      headers: Object.keys(headers).length > 0 ? headers : undefined,
+    };
+  } catch {
+    return {
+      error: "请求头 JSON 格式错误，请检查语法",
+    };
+  }
+};
+
 // 将通用配置片段写入/移除 settingsConfig
 export const updateCommonConfigSnippet = (
   jsonString: string,
