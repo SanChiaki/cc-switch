@@ -909,9 +909,11 @@ impl RequestForwarder {
             }
         }
 
-        // 禁用压缩，避免 gzip 流式响应解析错误
-        // 参考 CCH: undici 在连接提前关闭时会对不完整的 gzip 流抛出错误
-        request = request.header("accept-encoding", "identity");
+        // 流式请求保守禁用压缩，避免上游压缩 SSE 在连接中断时触发解压错误。
+        // 非流式请求不显式设置 Accept-Encoding，让 reqwest 自动协商压缩并透明解压。
+        if should_force_identity_encoding(effective_endpoint, &filtered_body, headers) {
+            request = request.header("accept-encoding", "identity");
+        }
 
         // 使用适配器添加认证头
         if let Some(auth) = adapter.extract_auth(provider) {
@@ -1127,6 +1129,30 @@ fn extract_json_error_message(body: &Value) -> Option<String> {
         .find_map(|value| value.as_str().map(ToString::to_string))
 }
 
+fn should_force_identity_encoding(
+    endpoint: &str,
+    body: &Value,
+    headers: &axum::http::HeaderMap,
+) -> bool {
+    if body
+        .get("stream")
+        .and_then(|value| value.as_bool())
+        .unwrap_or(false)
+    {
+        return true;
+    }
+
+    if endpoint.contains("streamGenerateContent") || endpoint.contains("alt=sse") {
+        return true;
+    }
+
+    headers
+        .get(axum::http::header::ACCEPT)
+        .and_then(|value| value.to_str().ok())
+        .map(|accept| accept.contains("text/event-stream"))
+        .unwrap_or(false)
+}
+
 fn summarize_text_for_log(text: &str, max_chars: usize) -> String {
     let normalized = text.split_whitespace().collect::<Vec<_>>().join(" ");
     let trimmed = normalized.trim();
@@ -1149,7 +1175,7 @@ mod tests {
     };
     use axum::{
         extract::State,
-        http::{HeaderMap, StatusCode, Uri},
+        http::{header::ACCEPT, HeaderMap, HeaderValue, StatusCode, Uri},
         routing::post,
         Json, Router,
     };
@@ -1675,5 +1701,50 @@ mod tests {
                 .map(String::as_str),
             Some("Bearer sk-codex-test")
         );
+    }
+
+    #[test]
+    fn force_identity_for_stream_flag_requests() {
+        let headers = HeaderMap::new();
+
+        assert!(should_force_identity_encoding(
+            "/v1/responses",
+            &json!({ "stream": true }),
+            &headers
+        ));
+    }
+
+    #[test]
+    fn force_identity_for_gemini_stream_endpoints() {
+        let headers = HeaderMap::new();
+
+        assert!(should_force_identity_encoding(
+            "/v1beta/models/gemini-2.5-pro:streamGenerateContent?alt=sse",
+            &json!({ "model": "gemini-2.5-pro" }),
+            &headers
+        ));
+    }
+
+    #[test]
+    fn force_identity_for_sse_accept_header() {
+        let mut headers = HeaderMap::new();
+        headers.insert(ACCEPT, HeaderValue::from_static("text/event-stream"));
+
+        assert!(should_force_identity_encoding(
+            "/v1/responses",
+            &json!({ "model": "gpt-5" }),
+            &headers
+        ));
+    }
+
+    #[test]
+    fn non_streaming_requests_allow_automatic_compression() {
+        let headers = HeaderMap::new();
+
+        assert!(!should_force_identity_encoding(
+            "/v1/responses",
+            &json!({ "model": "gpt-5" }),
+            &headers
+        ));
     }
 }

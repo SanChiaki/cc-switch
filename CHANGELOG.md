@@ -5,7 +5,61 @@ All notable changes to CC Switch will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [3.12.3] - 2026-03-15
+
+Post-v3.12.2 work adds a Tool Search domain restriction bypass, skill backup/restore lifecycle, proxy compatibility for OpenAI o-series models and gzip compression, and robustness fixes for Skills import, provider forms, and terminal session restore.
+
+**Stats**: 17 commits | 61 files changed | +3,335 insertions | -194 deletions
+
+### Added
+
+- **Tool Search Domain Bypass**: Added setting to bypass Claude CLI Tool Search domain whitelist via equal-length binary patching; backups stored in `~/.cc-switch/toolsearch-backups/` with auto-reapply on startup when enabled
+- **Skill Auto-Backup**: Skill files are automatically backed up to `~/.cc-switch/skill-backups/` before uninstall, with metadata preserved in `meta.json`; old backups pruned to keep at most 20
+- **Skill Backup Restore & Delete**: Added list/restore/delete commands for skill backups; restore copies files back to SSOT, saves the DB record, and syncs to the current app with rollback on failure
+
+### Changed
+
+- **Proxy Gzip Compression**: Non-streaming proxy requests now auto-negotiate gzip compression instead of forcing `identity`; streaming requests conservatively keep `identity` to avoid SSE decompression errors
+- **o1/o3 Model Compatibility**: Chat Completions proxy forwarding now correctly uses `max_completion_tokens` instead of `max_tokens` for OpenAI o-series models such as o1/o3/o4-mini (#1451)
+- **OpenCode Model Variants**: Placed OpenCode model variants at top level instead of inside options for better discoverability (#1317)
+- **Skills Import Flow**: Replaced implicit filesystem-based app inference with explicit `ImportSkillSelection` to prevent incorrect multi-app activation; added reconciliation to remove disabled/orphaned symlinks and MCP servers from live config
+
+### Fixed
+
+- **o-series Responses API Tokens**: Kept Responses API on the correct `max_output_tokens` field for o-series models instead of incorrectly injecting `max_completion_tokens`
+- **Provider Form Double Submit**: Prevented duplicate submissions on rapid button clicks in provider add/edit forms (#1352)
+- **Ghostty Session Restore**: Fixed Claude session restore in Ghostty terminal (#1506, thanks @canyonsehun)
+- **Skill ZIP Import Extension**: Added `.skill` file extension support in ZIP import dialog (#1240, #1455)
+- **Skill ZIP Install Target App**: ZIP skill installs now use the currently active app instead of always defaulting to Claude
+- **OpenClaw Active Card Highlight**: Fixed active OpenClaw provider card not being highlighted (#1419)
+- **Responsive Layout with TOC**: Improved responsive design when TOC title exists (#1491)
+- **Import Skills Dialog White Screen**: Added missing TooltipProvider in ImportSkillsDialog to prevent runtime crash when opening the dialog
+- **Panel Bottom Blank Area**: Replaced hardcoded `h-[calc(100vh-8rem)]` with `flex-1 min-h-0` across all content panels to eliminate bottom gap caused by mismatched offset values
+
+---
+
+## [3.12.2] - 2026-03-12
+
+Post-v3.12.1 work focuses on Common Config safety during proxy takeover and more reliable Codex TOML editing.
+
+**Stats**: 5 commits | 22 files changed | +1,716 insertions | -288 deletions
+
+### Added
+
+- **Empty State Guidance**: Improved first-run experience with detailed import instructions and a conditional Common Config snippet hint for Claude/Codex/Gemini providers
+
+### Changed
+
+- **Proxy Takeover Restore Flow**: Proxy takeover hot-switch and provider sync now refresh the restore backup instead of overwriting live config files, rebuilding effective provider settings with Common Config applied so rollback preserves the real user configuration
+- **Codex TOML Editing Engine**: Refactored Codex `config.toml` updates onto shared section-aware TOML helpers in Rust and TypeScript, covering `base_url` and `model` field edits across provider forms and takeover cleanup
+- **Common Config Initialization Lifecycle**: Startup now auto-extracts Common Config snippets from clean live configs before takeover restoration, tracks explicit "snippet cleared" state, and persists a one-time legacy migration flag to avoid repeated backfills
+
+### Fixed
+
+- **Common Config Loss During Takeover**: Fixed cases where proxy takeover could drop Common Config changes, overwrite live configs during sync, or produce incomplete restore snapshots when switching providers
+- **Codex Restore Snapshot Preservation**: Fixed Codex takeover restore backups so existing `mcp_servers` blocks survive provider hot-switches instead of being discarded; changed MCP backup preservation from wholesale table replacement to per-server-id merge so provider/common-config MCP updates win on conflict while live-only servers are retained
+- **Cleared Snippet Resurrection**: Fixed startup auto-extraction recreating Common Config snippets that users had intentionally cleared
+- **Codex `base_url` Misplacement**: Fixed Codex `base_url` extraction and editing to target the active `[model_providers.<name>]` section instead of appending to the file tail or confusing `mcp_servers.*.base_url` entries for provider endpoints
 
 ---
 
