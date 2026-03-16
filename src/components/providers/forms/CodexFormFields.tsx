@@ -1,7 +1,10 @@
 import { useTranslation } from "react-i18next";
 import EndpointSpeedTest from "./EndpointSpeedTest";
 import { ApiKeySection, EndpointField, RequestHeadersField } from "./shared";
-import type { ProviderCategory } from "@/types";
+import type {
+  ProviderCategory,
+  ProviderRequestHeadersAuthMode,
+} from "@/types";
 
 interface EndpointCandidate {
   url: string;
@@ -25,6 +28,10 @@ interface CodexFormFieldsProps {
   requestHeaders: string;
   onRequestHeadersChange: (value: string) => void;
   requestHeadersError?: string;
+  requestHeadersAuthMode?: ProviderRequestHeadersAuthMode;
+  onRequestHeadersAuthModeChange: (
+    value?: ProviderRequestHeadersAuthMode,
+  ) => void;
   isEndpointModalOpen: boolean;
   onEndpointModalToggle: (open: boolean) => void;
   onCustomEndpointsChange?: (endpoints: string[]) => void;
@@ -55,6 +62,8 @@ export function CodexFormFields({
   requestHeaders,
   onRequestHeadersChange,
   requestHeadersError,
+  requestHeadersAuthMode,
+  onRequestHeadersAuthModeChange,
   isEndpointModalOpen,
   onEndpointModalToggle,
   onCustomEndpointsChange,
@@ -107,6 +116,8 @@ export function CodexFormFields({
         value={requestHeaders}
         onChange={onRequestHeadersChange}
         error={requestHeadersError}
+        authMode={requestHeadersAuthMode}
+        onAuthModeChange={onRequestHeadersAuthModeChange}
       />
 
       {/* Codex Model Name 输入框 */}

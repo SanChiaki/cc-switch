@@ -15,6 +15,7 @@ import type {
   ProviderProxyConfig,
   ClaudeApiFormat,
   ClaudeApiKeyField,
+  ProviderRequestHeadersAuthMode,
 } from "@/types";
 import {
   providerPresets,
@@ -300,6 +301,9 @@ export function ProviderForm({
   const [requestHeadersText, setRequestHeadersText] = useState<string>(() =>
     formatRequestHeadersConfig(initialData?.meta?.requestHeaders),
   );
+  const [requestHeadersAuthMode, setRequestHeadersAuthMode] = useState<
+    ProviderRequestHeadersAuthMode | undefined
+  >(() => initialData?.meta?.requestHeadersAuthMode);
 
   const handleApiFormatChange = useCallback((format: ClaudeApiFormat) => {
     setLocalApiFormat(format);
@@ -370,6 +374,7 @@ export function ProviderForm({
     setRequestHeadersText(
       formatRequestHeadersConfig(initialData?.meta?.requestHeaders),
     );
+    setRequestHeadersAuthMode(initialData?.meta?.requestHeadersAuthMode);
   }, [appId, initialData]);
 
   const requestHeadersError = useMemo(() => {
@@ -912,6 +917,7 @@ export function ProviderForm({
           ? localApiKeyField
           : undefined,
       requestHeaders: parsedRequestHeaders.headers,
+      requestHeadersAuthMode: requestHeadersAuthMode,
     };
 
     onSubmit(payload);
@@ -1350,6 +1356,8 @@ export function ProviderForm({
             requestHeaders={requestHeadersText}
             onRequestHeadersChange={setRequestHeadersText}
             requestHeadersError={requestHeadersError}
+            requestHeadersAuthMode={requestHeadersAuthMode}
+            onRequestHeadersAuthModeChange={setRequestHeadersAuthMode}
             isEndpointModalOpen={isEndpointModalOpen}
             onEndpointModalToggle={setIsEndpointModalOpen}
             onCustomEndpointsChange={
@@ -1388,6 +1396,8 @@ export function ProviderForm({
             requestHeaders={requestHeadersText}
             onRequestHeadersChange={setRequestHeadersText}
             requestHeadersError={requestHeadersError}
+            requestHeadersAuthMode={requestHeadersAuthMode}
+            onRequestHeadersAuthModeChange={setRequestHeadersAuthMode}
             isEndpointModalOpen={isCodexEndpointModalOpen}
             onEndpointModalToggle={setIsCodexEndpointModalOpen}
             onCustomEndpointsChange={

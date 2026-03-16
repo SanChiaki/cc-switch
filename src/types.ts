@@ -153,6 +153,8 @@ export interface ProviderMeta {
   apiKeyField?: ClaudeApiKeyField;
   // 代理转发到上游模型服务时附加的自定义请求头
   requestHeaders?: Record<string, string>;
+  // 自定义请求头的鉴权模式（用于动态生成最终写入上游的请求头）
+  requestHeadersAuthMode?: ProviderRequestHeadersAuthMode;
   // Prompt cache key for OpenAI-compatible endpoints (improves cache hit rate)
   promptCacheKey?: string;
 }
@@ -168,6 +170,9 @@ export type ClaudeApiFormat = "anthropic" | "openai_chat" | "openai_responses";
 
 // Claude 认证字段类型
 export type ClaudeApiKeyField = "ANTHROPIC_AUTH_TOKEN" | "ANTHROPIC_API_KEY";
+
+// 自定义请求头的鉴权模式
+export type ProviderRequestHeadersAuthMode = "his_token";
 
 // 主页面显示的应用配置
 export interface VisibleApps {

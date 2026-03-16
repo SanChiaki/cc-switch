@@ -13,7 +13,7 @@ use crate::app_config::AppType;
 use crate::error::AppError;
 use crate::provider::Provider;
 use crate::proxy::providers::{
-    extract_custom_request_headers, get_adapter, AuthInfo, AuthStrategy,
+    get_adapter, resolve_custom_request_headers, AuthInfo, AuthStrategy,
 };
 
 /// 健康状态枚举
@@ -341,8 +341,9 @@ impl StreamCheckService {
         });
 
         let mut request_builder = client.post(&url);
-        let mut custom_headers =
-            extract_custom_request_headers(provider).map_err(AppError::Message)?;
+        let mut custom_headers = resolve_custom_request_headers(provider)
+            .await
+            .map_err(AppError::Message)?;
         let custom_anthropic_beta = custom_headers.remove("anthropic-beta");
         let custom_anthropic_version = custom_headers.remove("anthropic-version");
 
@@ -485,8 +486,9 @@ impl StreamCheckService {
         }
 
         for (i, url) in urls.iter().enumerate() {
-            let custom_headers =
-                extract_custom_request_headers(provider).map_err(AppError::Message)?;
+            let custom_headers = resolve_custom_request_headers(provider)
+                .await
+                .map_err(AppError::Message)?;
             // 严格按照 Codex CLI 请求格式设置 headers
             let request_builder = client
                 .post(url)

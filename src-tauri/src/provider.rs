@@ -248,11 +248,25 @@ pub struct ProviderMeta {
     /// 代理转发到上游模型服务时附加的自定义请求头
     #[serde(rename = "requestHeaders", skip_serializing_if = "Option::is_none")]
     pub request_headers: Option<HashMap<String, String>>,
+    /// 自定义请求头的鉴权模式（用于动态生成最终写入上游的请求头）
+    #[serde(
+        rename = "requestHeadersAuthMode",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub request_headers_auth_mode: Option<RequestHeadersAuthMode>,
     /// Prompt cache key for OpenAI-compatible endpoints.
     /// When set, injected into converted requests to improve cache hit rate.
     /// If not set, provider ID is used automatically during format conversion.
     #[serde(rename = "promptCacheKey", skip_serializing_if = "Option::is_none")]
     pub prompt_cache_key: Option<String>,
+}
+
+/// 自定义请求头的鉴权模式
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum RequestHeadersAuthMode {
+    /// 将用户填写的请求头作为脚本输入，动态生成真正写入上游请求的请求头
+    HisToken,
 }
 
 impl ProviderManager {
@@ -652,7 +666,7 @@ pub struct OpenCodeModelLimit {
 mod tests {
     use super::{
         ClaudeModelConfig, CodexModelConfig, GeminiModelConfig, OpenCodeProviderConfig, Provider,
-        ProviderManager, ProviderMeta, UniversalProvider,
+        ProviderManager, ProviderMeta, RequestHeadersAuthMode, UniversalProvider,
     };
     use serde_json::json;
 
@@ -678,6 +692,22 @@ mod tests {
         let value = serde_json::to_value(&meta).expect("serialize ProviderMeta");
 
         assert!(value.get("pricingModelSource").is_none());
+    }
+
+    #[test]
+    fn provider_meta_serializes_request_headers_auth_mode() {
+        let mut meta = ProviderMeta::default();
+        meta.request_headers_auth_mode = Some(RequestHeadersAuthMode::HisToken);
+
+        let value = serde_json::to_value(&meta).expect("serialize ProviderMeta");
+
+        assert_eq!(
+            value
+                .get("requestHeadersAuthMode")
+                .and_then(|item| item.as_str()),
+            Some("his_token")
+        );
+        assert!(value.get("request_headers_auth_mode").is_none());
     }
 
     #[test]

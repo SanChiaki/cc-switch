@@ -14,6 +14,7 @@ import type {
   ProviderCategory,
   ClaudeApiFormat,
   ClaudeApiKeyField,
+  ProviderRequestHeadersAuthMode,
 } from "@/types";
 import type { TemplateValueConfig } from "@/config/claudeProviderPresets";
 
@@ -46,6 +47,10 @@ interface ClaudeFormFieldsProps {
   requestHeaders: string;
   onRequestHeadersChange: (value: string) => void;
   requestHeadersError?: string;
+  requestHeadersAuthMode?: ProviderRequestHeadersAuthMode;
+  onRequestHeadersAuthModeChange: (
+    value?: ProviderRequestHeadersAuthMode,
+  ) => void;
   isEndpointModalOpen: boolean;
   onEndpointModalToggle: (open: boolean) => void;
   onCustomEndpointsChange?: (endpoints: string[]) => void;
@@ -101,6 +106,8 @@ export function ClaudeFormFields({
   requestHeaders,
   onRequestHeadersChange,
   requestHeadersError,
+  requestHeadersAuthMode,
+  onRequestHeadersAuthModeChange,
   isEndpointModalOpen,
   onEndpointModalToggle,
   onCustomEndpointsChange,
@@ -194,6 +201,8 @@ export function ClaudeFormFields({
         value={requestHeaders}
         onChange={onRequestHeadersChange}
         error={requestHeadersError}
+        authMode={requestHeadersAuthMode}
+        onAuthModeChange={onRequestHeadersAuthModeChange}
       />
 
       {/* 端点测速弹窗 */}

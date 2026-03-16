@@ -8,7 +8,7 @@ use super::{
     failover_switch::FailoverSwitchManager,
     log_codes::fwd as log_fwd,
     provider_router::ProviderRouter,
-    providers::{extract_custom_request_headers, get_adapter, ProviderAdapter, ProviderType},
+    providers::{get_adapter, resolve_custom_request_headers, ProviderAdapter, ProviderType},
     thinking_budget_rectifier::{rectify_thinking_budget, should_rectify_thinking_budget},
     thinking_rectifier::{
         normalize_thinking_type, rectify_anthropic_request, should_rectify_thinking_signature,
@@ -830,8 +830,9 @@ impl RequestForwarder {
         let proxy_config = provider.meta.as_ref().and_then(|m| m.proxy_config.as_ref());
         let client = super::http_client::get_for_provider(proxy_config);
         let mut request = client.post(&url);
-        let mut custom_headers =
-            extract_custom_request_headers(provider).map_err(ProxyError::ConfigError)?;
+        let mut custom_headers = resolve_custom_request_headers(provider)
+            .await
+            .map_err(ProxyError::ConfigError)?;
         let custom_anthropic_beta = if adapter.name() == "Claude" {
             custom_headers.remove("anthropic-beta")
         } else {
@@ -1144,7 +1145,7 @@ mod tests {
     use super::*;
     use crate::{
         database::Database,
-        provider::{Provider, ProviderMeta},
+        provider::{Provider, ProviderMeta, RequestHeadersAuthMode},
     };
     use axum::{
         extract::State,
@@ -1153,7 +1154,9 @@ mod tests {
         Json, Router,
     };
     use serde_json::json;
-    use std::{collections::HashMap, sync::Arc, time::Duration};
+    use serial_test::serial;
+    use std::{collections::HashMap, env, ffi::OsString, sync::Arc, time::Duration};
+    use tempfile::tempdir;
     use tokio::sync::{mpsc, RwLock};
 
     #[derive(Debug)]
@@ -1161,12 +1164,14 @@ mod tests {
         path: String,
         query: Option<String>,
         headers: HashMap<String, String>,
+        body: serde_json::Value,
     }
 
     async fn capture_request(
         State(tx): State<mpsc::UnboundedSender<CapturedRequest>>,
         uri: Uri,
         headers: HeaderMap,
+        Json(body): Json<serde_json::Value>,
     ) -> (StatusCode, Json<serde_json::Value>) {
         let headers = headers
             .iter()
@@ -1182,15 +1187,58 @@ mod tests {
             path: uri.path().to_string(),
             query: uri.query().map(ToString::to_string),
             headers,
+            body,
         })
         .expect("capture request");
 
         (StatusCode::OK, Json(json!({ "ok": true })))
     }
 
+    async fn capture_his_token_request(
+        State(tx): State<mpsc::UnboundedSender<CapturedRequest>>,
+        uri: Uri,
+        headers: HeaderMap,
+        Json(body): Json<serde_json::Value>,
+    ) -> (StatusCode, Json<serde_json::Value>) {
+        let headers = headers
+            .iter()
+            .filter_map(|(name, value)| {
+                value
+                    .to_str()
+                    .ok()
+                    .map(|value| (name.as_str().to_string(), value.to_string()))
+            })
+            .collect();
+
+        tx.send(CapturedRequest {
+            path: uri.path().to_string(),
+            query: uri.query().map(ToString::to_string),
+            headers,
+            body: body.clone(),
+        })
+        .expect("capture HIS token request");
+
+        let id = body
+            .get("id")
+            .and_then(|value| value.as_str())
+            .unwrap_or("");
+        let token = body
+            .get("token")
+            .and_then(|value| value.as_str())
+            .unwrap_or("");
+
+        (
+            StatusCode::OK,
+            Json(json!({
+                "token": format!("his-{id}-{token}"),
+            })),
+        )
+    }
+
     async fn start_mock_server() -> (String, mpsc::UnboundedReceiver<CapturedRequest>) {
         let (tx, rx) = mpsc::unbounded_channel();
         let app = Router::new()
+            .route("/his/token", post(capture_his_token_request))
             .route("/v1/messages", post(capture_request))
             .route("/v1/chat/completions", post(capture_request))
             .route("/v1/responses", post(capture_request))
@@ -1296,6 +1344,25 @@ mod tests {
             Ok(value) => value,
             Err(err) => panic!("{context}: {}", err.error),
         }
+    }
+
+    struct TestHomeGuard {
+        previous: Option<OsString>,
+    }
+
+    impl Drop for TestHomeGuard {
+        fn drop(&mut self) {
+            match &self.previous {
+                Some(value) => env::set_var("CC_SWITCH_TEST_HOME", value),
+                None => env::remove_var("CC_SWITCH_TEST_HOME"),
+            }
+        }
+    }
+
+    fn set_test_home(path: &std::path::Path) -> TestHomeGuard {
+        let previous = env::var_os("CC_SWITCH_TEST_HOME");
+        env::set_var("CC_SWITCH_TEST_HOME", path);
+        TestHomeGuard { previous }
     }
 
     #[test]
@@ -1534,6 +1601,79 @@ mod tests {
         assert_eq!(
             captured.headers.get("accept-encoding").map(String::as_str),
             Some("identity")
+        );
+    }
+
+    #[tokio::test]
+    #[serial]
+    async fn forward_codex_his_token_auth_mode_sends_script_generated_headers_only() {
+        let test_home = tempdir().expect("create test home");
+        let _home_guard = set_test_home(test_home.path());
+
+        let (base_url, mut rx) = start_mock_server().await;
+        let mut provider = build_codex_provider(
+            &base_url,
+            HashMap::from([
+                ("id".to_string(), "user-1".to_string()),
+                ("token".to_string(), "seed-1".to_string()),
+                (
+                    "x-his-token-url".to_string(),
+                    format!("{base_url}/his/token"),
+                ),
+            ]),
+        );
+        provider.meta = Some(ProviderMeta {
+            request_headers_auth_mode: Some(RequestHeadersAuthMode::HisToken),
+            ..provider.meta.take().unwrap_or_default()
+        });
+
+        let forwarder = build_forwarder();
+        let result = unwrap_forward_result(
+            forwarder
+                .forward_with_retry(
+                    &AppType::Codex,
+                    "/v1/responses",
+                    json!({
+                        "model": "gpt-5.1-codex",
+                        "input": [{"role": "user", "content": "hi"}]
+                    }),
+                    HeaderMap::new(),
+                    vec![provider],
+                )
+                .await,
+            "forward codex request with HIS token auth",
+        );
+
+        assert_eq!(result.response.status(), StatusCode::OK);
+
+        let auth_request = recv_captured_request(&mut rx).await;
+        assert_eq!(auth_request.path, "/his/token");
+        assert_eq!(
+            auth_request.body,
+            json!({
+                "id": "user-1",
+                "token": "seed-1",
+            })
+        );
+
+        let upstream_request = recv_captured_request(&mut rx).await;
+        assert_eq!(upstream_request.path, "/v1/responses");
+        assert_eq!(
+            upstream_request
+                .headers
+                .get("x-his-token")
+                .map(String::as_str),
+            Some("his-user-1-seed-1")
+        );
+        assert!(!upstream_request.headers.contains_key("id"));
+        assert!(!upstream_request.headers.contains_key("token"));
+        assert!(!upstream_request.headers.contains_key("x-his-token-url"));
+        assert_eq!(
+            upstream_request
+                .headers
+                .get("authorization")
+                .map(String::as_str),
+            Some("Bearer sk-codex-test")
         );
     }
 }

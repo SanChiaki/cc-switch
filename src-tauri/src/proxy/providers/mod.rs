@@ -33,7 +33,7 @@ pub use auth::{AuthInfo, AuthStrategy};
 pub use claude::{get_claude_api_format, ClaudeAdapter};
 pub use codex::CodexAdapter;
 pub use gemini::GeminiAdapter;
-pub use headers::extract_custom_request_headers;
+pub use headers::resolve_custom_request_headers;
 
 /// 供应商类型枚举
 ///
