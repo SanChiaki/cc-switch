@@ -59,6 +59,7 @@ function readDynamicToken(response) {
   return (
     response?.body?.data?.dynamicToken ||
     response?.body?.data?.DynamicToken ||
+    response?.body?.result ||
     response?.body?.dynamicToken ||
     response?.body?.DynamicToken ||
     response?.body?.token ||
@@ -831,6 +832,52 @@ mod tests {
                 .unwrap_err();
 
         assert!(error.contains("Missing inputHeaders.getAccessTokenUrl"));
+    }
+
+    #[test]
+    fn default_his_token_script_accepts_result_as_dynamic_token() {
+        let input_headers = HashMap::from([
+            (
+                "getAccessTokenUrl".to_string(),
+                "https://example.com/his/access-token".to_string(),
+            ),
+            (
+                "getDynamicTokenUrl".to_string(),
+                "https://example.com/his/dynamic-token".to_string(),
+            ),
+            ("app_key".to_string(), "key-1".to_string()),
+            ("app_secret".to_string(), "secret-1".to_string()),
+            ("appid".to_string(), "app-1".to_string()),
+        ]);
+
+        let responses = vec![
+            ScriptHttpResponse {
+                status: 200,
+                headers: HashMap::new(),
+                body: json!({
+                    "accessToken": "access-1",
+                }),
+            },
+            ScriptHttpResponse {
+                status: 200,
+                headers: HashMap::new(),
+                body: json!({
+                    "result": "dynamic-from-result",
+                }),
+            },
+        ];
+
+        let generated = extract_script_headers_from_responses(
+            DEFAULT_HIS_TOKEN_SCRIPT,
+            &input_headers,
+            &responses,
+        )
+        .unwrap();
+
+        assert_eq!(
+            generated.get("Authorization").map(String::as_str),
+            Some("dynamic-from-result")
+        );
     }
 
     #[test]
