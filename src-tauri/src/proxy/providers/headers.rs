@@ -3,7 +3,7 @@ use crate::{
     provider::{Provider, RequestHeadersAuthMode},
 };
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
-use rquickjs::{Context, Function, Runtime};
+use rquickjs::{CatchResultExt, Context, Function, Runtime};
 use serde::Deserialize;
 use serde_json::{json, Value};
 use std::{collections::HashMap, fs, path::PathBuf, time::Duration};
@@ -371,6 +371,7 @@ fn extract_next_script_request(
         context.with(|ctx| {
             let config: rquickjs::Object = ctx
                 .eval(script_with_input.clone())
+                .catch(&ctx)
                 .map_err(|e| format!("Failed to evaluate HIS token script: {e}"))?;
 
             match config.get::<_, Function>("nextRequest") {
@@ -389,6 +390,7 @@ fn extract_next_script_request(
 
                     let request_js: rquickjs::Value = next_request
                         .call((previous_response_js, request_headers_js, responses_js))
+                        .catch(&ctx)
                         .map_err(|e| format!("Failed to execute HIS token nextRequest: {e}"))?;
 
                     let Some(request_json) = ctx.json_stringify(request_js).map_err(|e| {
@@ -476,6 +478,7 @@ fn extract_script_headers_from_responses(
         context.with(|ctx| {
             let config: rquickjs::Object = ctx
                 .eval(script_with_input.clone())
+                .catch(&ctx)
                 .map_err(|e| format!("Failed to evaluate HIS token script: {e}"))?;
             let extractor: Function = config
                 .get("extractor")
@@ -493,6 +496,7 @@ fn extract_script_headers_from_responses(
 
             let result_js: rquickjs::Value = extractor
                 .call((response_js, request_headers_js, responses_js))
+                .catch(&ctx)
                 .map_err(|e| format!("Failed to execute HIS token extractor: {e}"))?;
 
             let result_json: String = ctx
@@ -818,6 +822,15 @@ mod tests {
         .unwrap_err();
 
         assert!(error.contains("must be a JSON object"));
+    }
+
+    #[test]
+    fn his_token_script_reports_missing_required_input() {
+        let error =
+            extract_next_script_request(DEFAULT_HIS_TOKEN_SCRIPT, &HashMap::new(), None, &[])
+                .unwrap_err();
+
+        assert!(error.contains("Missing inputHeaders.getAccessTokenUrl"));
     }
 
     #[test]
