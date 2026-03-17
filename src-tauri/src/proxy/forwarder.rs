@@ -1220,7 +1220,7 @@ mod tests {
         (StatusCode::OK, Json(json!({ "ok": true })))
     }
 
-    async fn capture_his_token_request(
+    async fn capture_his_access_token_request(
         State(tx): State<mpsc::UnboundedSender<CapturedRequest>>,
         uri: Uri,
         headers: HeaderMap,
@@ -1242,21 +1242,59 @@ mod tests {
             headers,
             body: body.clone(),
         })
-        .expect("capture HIS token request");
+        .expect("capture HIS access token request");
 
-        let id = body
-            .get("id")
+        let app_key = body
+            .get("app_key")
             .and_then(|value| value.as_str())
             .unwrap_or("");
-        let token = body
-            .get("token")
+        let app_secret = body
+            .get("app_secret")
             .and_then(|value| value.as_str())
             .unwrap_or("");
 
         (
             StatusCode::OK,
             Json(json!({
-                "token": format!("his-{id}-{token}"),
+                "accessToken": format!("access-{app_key}-{app_secret}"),
+            })),
+        )
+    }
+
+    async fn capture_his_dynamic_token_request(
+        State(tx): State<mpsc::UnboundedSender<CapturedRequest>>,
+        uri: Uri,
+        headers: HeaderMap,
+        Json(body): Json<serde_json::Value>,
+    ) -> (StatusCode, Json<serde_json::Value>) {
+        let headers = headers
+            .iter()
+            .filter_map(|(name, value)| {
+                value
+                    .to_str()
+                    .ok()
+                    .map(|value| (name.as_str().to_string(), value.to_string()))
+            })
+            .collect::<HashMap<_, _>>();
+
+        tx.send(CapturedRequest {
+            path: uri.path().to_string(),
+            query: uri.query().map(ToString::to_string),
+            headers: headers.clone(),
+            body: body.clone(),
+        })
+        .expect("capture HIS dynamic token request");
+
+        let access_token = headers.get("accesstoken").map(String::as_str).unwrap_or("");
+        let appid = body
+            .get("appid")
+            .and_then(|value| value.as_str())
+            .unwrap_or("");
+
+        (
+            StatusCode::OK,
+            Json(json!({
+                "dynamicToken": format!("dynamic-{appid}-{access_token}"),
             })),
         )
     }
@@ -1264,7 +1302,11 @@ mod tests {
     async fn start_mock_server() -> (String, mpsc::UnboundedReceiver<CapturedRequest>) {
         let (tx, rx) = mpsc::unbounded_channel();
         let app = Router::new()
-            .route("/his/token", post(capture_his_token_request))
+            .route("/his/access-token", post(capture_his_access_token_request))
+            .route(
+                "/his/dynamic-token",
+                post(capture_his_dynamic_token_request),
+            )
             .route("/v1/messages", post(capture_request))
             .route("/v1/chat/completions", post(capture_request))
             .route("/v1/responses", post(capture_request))
@@ -1640,11 +1682,16 @@ mod tests {
         let mut provider = build_codex_provider(
             &base_url,
             HashMap::from([
-                ("id".to_string(), "user-1".to_string()),
-                ("token".to_string(), "seed-1".to_string()),
+                ("app_key".to_string(), "app-key-1".to_string()),
+                ("app_secret".to_string(), "app-secret-1".to_string()),
+                ("appid".to_string(), "his-app-1".to_string()),
                 (
-                    "x-his-token-url".to_string(),
-                    format!("{base_url}/his/token"),
+                    "getAccessTokenUrl".to_string(),
+                    format!("{base_url}/his/access-token"),
+                ),
+                (
+                    "getDynamicTokenUrl".to_string(),
+                    format!("{base_url}/his/dynamic-token"),
                 ),
             ]),
         );
@@ -1673,12 +1720,28 @@ mod tests {
         assert_eq!(result.response.status(), StatusCode::OK);
 
         let auth_request = recv_captured_request(&mut rx).await;
-        assert_eq!(auth_request.path, "/his/token");
+        assert_eq!(auth_request.path, "/his/access-token");
         assert_eq!(
             auth_request.body,
             json!({
-                "id": "user-1",
-                "token": "seed-1",
+                "app_key": "app-key-1",
+                "app_secret": "app-secret-1",
+            })
+        );
+
+        let dynamic_token_request = recv_captured_request(&mut rx).await;
+        assert_eq!(dynamic_token_request.path, "/his/dynamic-token");
+        assert_eq!(
+            dynamic_token_request
+                .headers
+                .get("accesstoken")
+                .map(String::as_str),
+            Some("access-app-key-1-app-secret-1")
+        );
+        assert_eq!(
+            dynamic_token_request.body,
+            json!({
+                "appid": "his-app-1",
             })
         );
 
@@ -1687,20 +1750,15 @@ mod tests {
         assert_eq!(
             upstream_request
                 .headers
-                .get("x-his-token")
-                .map(String::as_str),
-            Some("his-user-1-seed-1")
-        );
-        assert!(!upstream_request.headers.contains_key("id"));
-        assert!(!upstream_request.headers.contains_key("token"));
-        assert!(!upstream_request.headers.contains_key("x-his-token-url"));
-        assert_eq!(
-            upstream_request
-                .headers
                 .get("authorization")
                 .map(String::as_str),
-            Some("Bearer sk-codex-test")
+            Some("dynamic-his-app-1-access-app-key-1-app-secret-1")
         );
+        assert!(!upstream_request.headers.contains_key("app_key"));
+        assert!(!upstream_request.headers.contains_key("app_secret"));
+        assert!(!upstream_request.headers.contains_key("appid"));
+        assert!(!upstream_request.headers.contains_key("getaccesstokenurl"));
+        assert!(!upstream_request.headers.contains_key("getdynamictokenurl"));
     }
 
     #[test]

@@ -9,6 +9,7 @@ use serde_json::{json, Value};
 use std::{collections::HashMap, fs, path::PathBuf, time::Duration};
 
 const HIS_TOKEN_SCRIPT_RELATIVE_PATH: &str = "scripts/provider-auth/his_token.js";
+const HIS_TOKEN_MAX_CHAINED_REQUESTS: usize = 8;
 const DEFAULT_HIS_TOKEN_SCRIPT: &str = r#"// inputHeaders:
 //   The JSON object configured in the provider's "Request Headers" field.
 //   In HIS token mode, these headers are used as script input only.
@@ -18,57 +19,118 @@ const DEFAULT_HIS_TOKEN_SCRIPT: &str = r#"// inputHeaders:
 //   request headers written to the upstream model request.
 //
 // Quick start:
-// 1. Put the HIS auth endpoint in inputHeaders["x-his-token-url"], or edit
-//    this script and hardcode your endpoint.
-// 2. Put your upstream auth inputs in inputHeaders.id / inputHeaders.token.
-// 3. Return the final upstream headers from extractor().
-const authUrl = inputHeaders["x-his-token-url"] || "";
-if (!authUrl) {
+// 1. Put the first HIS endpoint in inputHeaders.getAccessTokenUrl.
+// 2. Put the second HIS endpoint in inputHeaders.getDynamicTokenUrl.
+// 3. Put app_key / app_secret / appid in the same JSON.
+// 4. Return the final upstream headers from extractor().
+const getAccessTokenUrl = inputHeaders.getAccessTokenUrl || "";
+const getDynamicTokenUrl = inputHeaders.getDynamicTokenUrl || "";
+const appKey = inputHeaders.app_key || "";
+const appSecret = inputHeaders.app_secret || "";
+const appId = inputHeaders.appid || "xxxxx";
+
+if (!getAccessTokenUrl) {
   throw new Error(
-    'Missing inputHeaders["x-his-token-url"]. You can also edit scripts/provider-auth/his_token.js directly.',
+    'Missing inputHeaders.getAccessTokenUrl. You can also edit scripts/provider-auth/his_token.js directly.',
+  );
+}
+
+if (!getDynamicTokenUrl) {
+  throw new Error(
+    'Missing inputHeaders.getDynamicTokenUrl. You can also edit scripts/provider-auth/his_token.js directly.',
+  );
+}
+
+if (!appKey || !appSecret) {
+  throw new Error("Missing inputHeaders.app_key or inputHeaders.app_secret");
+}
+
+function readAccessToken(response) {
+  return (
+    response?.body?.data?.accessToken ||
+    response?.body?.data?.AccessToken ||
+    response?.body?.accessToken ||
+    response?.body?.AccessToken ||
+    ""
+  );
+}
+
+function readDynamicToken(response) {
+  return (
+    response?.body?.data?.dynamicToken ||
+    response?.body?.data?.DynamicToken ||
+    response?.body?.dynamicToken ||
+    response?.body?.DynamicToken ||
+    response?.body?.token ||
+    response?.body?.Authorization ||
+    ""
   );
 }
 
 ({
-  request: {
-    url: authUrl,
-    method: "POST",
-    headers: {
-      "content-type": "application/json",
-    },
-    body: {
-      id: inputHeaders.id || "",
-      token: inputHeaders.token || "",
-    },
-    timeoutSecs: 10,
-  },
-
-  extractor(response, requestHeaders) {
-    if (!response.ok) {
-      throw new Error(`HIS token request failed with HTTP ${response.status}`);
+  nextRequest(previousResponse, requestHeaders, responses) {
+    if (responses.length === 0) {
+      return {
+        url: getAccessTokenUrl,
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+        },
+        body: {
+          app_key: appKey,
+          app_secret: appSecret,
+        },
+        timeoutSecs: 10,
+      };
     }
 
-    const dynamicToken =
-      response?.body?.data?.token ||
-      response?.body?.data?.accessToken ||
-      response?.body?.token ||
-      response?.body?.accessToken ||
-      response?.body?.access_token ||
-      "";
+    if (responses.length === 1) {
+      if (!previousResponse.ok) {
+        throw new Error(
+          `getAccessToken failed with HTTP ${previousResponse.status}`,
+        );
+      }
+
+      const accessToken = readAccessToken(previousResponse);
+      if (!accessToken) {
+        throw new Error("No accessToken found in getAccessToken response body");
+      }
+
+      return {
+        url: getDynamicTokenUrl,
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          AccessToken: accessToken,
+        },
+        body: {
+          appid: appId,
+        },
+        timeoutSecs: 10,
+      };
+    }
+
+    return null;
+  },
+
+  extractor(lastResponse, requestHeaders, responses) {
+    if (!lastResponse.ok) {
+      throw new Error(`getDynamicToken failed with HTTP ${lastResponse.status}`);
+    }
+
+    if (responses.length < 2) {
+      throw new Error("Expected getAccessToken and getDynamicToken responses");
+    }
+
+    const dynamicToken = readDynamicToken(lastResponse);
 
     if (!dynamicToken) {
-      throw new Error("No dynamic token found in HIS token response body");
+      throw new Error("No dynamicToken found in getDynamicToken response body");
     }
 
     return {
-      "x-his-token": dynamicToken,
+      Authorization: dynamicToken,
     };
-
-    // If you want to preserve some original headers, return them explicitly:
-    // return {
-    //   "x-his-token": dynamicToken,
-    //   "x-request-id": requestHeaders["x-request-id"] || "",
-    // };
   },
 })
 "#;
@@ -85,7 +147,7 @@ struct ScriptRequestConfig {
     timeout_secs: Option<u64>,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 struct ScriptHttpResponse {
     status: u16,
     headers: HashMap<String, String>,
@@ -257,11 +319,48 @@ fn build_script_with_input(
     ))
 }
 
-fn extract_script_request(
+fn serialize_script_response(response: &ScriptHttpResponse) -> Value {
+    json!({
+        "status": response.status,
+        "ok": (200..=299).contains(&response.status),
+        "headers": response.headers,
+        "body": response.body,
+    })
+}
+
+fn parse_script_request_config(request_json: &str) -> Result<ScriptRequestConfig, String> {
+    let request: ScriptRequestConfig = serde_json::from_str(request_json)
+        .map_err(|e| format!("Invalid HIS token request config format: {e}"))?;
+
+    if request.url.trim().is_empty() {
+        return Err("HIS token request.url cannot be empty".to_string());
+    }
+
+    Ok(request)
+}
+
+fn extract_next_script_request(
     script_code: &str,
     input_headers: &HashMap<String, String>,
-) -> Result<ScriptRequestConfig, String> {
+    previous_response: Option<&ScriptHttpResponse>,
+    responses: &[ScriptHttpResponse],
+) -> Result<Option<ScriptRequestConfig>, String> {
     let script_with_input = build_script_with_input(script_code, input_headers)?;
+    let previous_response_json = serde_json::to_string(
+        &previous_response
+            .map(serialize_script_response)
+            .unwrap_or(Value::Null),
+    )
+    .map_err(|e| format!("Failed to serialize HIS token previous response payload: {e}"))?;
+    let input_headers_json = serde_json::to_string(input_headers)
+        .map_err(|e| format!("Failed to serialize request header inputs: {e}"))?;
+    let responses_json = serde_json::to_string(
+        &responses
+            .iter()
+            .map(serialize_script_response)
+            .collect::<Vec<_>>(),
+    )
+    .map_err(|e| format!("Failed to serialize HIS token response payloads: {e}"))?;
 
     let request_json = {
         let runtime =
@@ -273,46 +372,100 @@ fn extract_script_request(
             let config: rquickjs::Object = ctx
                 .eval(script_with_input.clone())
                 .map_err(|e| format!("Failed to evaluate HIS token script: {e}"))?;
-            let request: rquickjs::Object = config
-                .get("request")
-                .map_err(|e| format!("Missing request config in HIS token script: {e}"))?;
 
-            let request_json: String = ctx
-                .json_stringify(request)
-                .map_err(|e| format!("Failed to serialize HIS token request config: {e}"))?
-                .ok_or_else(|| "HIS token request config serialization returned None".to_string())?
-                .get()
-                .map_err(|e| format!("Failed to read HIS token request JSON: {e}"))?;
+            match config.get::<_, Function>("nextRequest") {
+                Ok(next_request) => {
+                    let previous_response_js: rquickjs::Value = ctx
+                        .json_parse(previous_response_json.as_str())
+                        .map_err(|e| {
+                            format!("Failed to parse HIS token previous response payload: {e}")
+                        })?;
+                    let request_headers_js: rquickjs::Value = ctx
+                        .json_parse(input_headers_json.as_str())
+                        .map_err(|e| format!("Failed to parse request header inputs: {e}"))?;
+                    let responses_js: rquickjs::Value = ctx
+                        .json_parse(responses_json.as_str())
+                        .map_err(|e| format!("Failed to parse HIS token response payloads: {e}"))?;
 
-            Ok::<_, String>(request_json)
+                    let request_js: rquickjs::Value = next_request
+                        .call((previous_response_js, request_headers_js, responses_js))
+                        .map_err(|e| format!("Failed to execute HIS token nextRequest: {e}"))?;
+
+                    let Some(request_json) = ctx.json_stringify(request_js).map_err(|e| {
+                        format!("Failed to serialize HIS token nextRequest output: {e}")
+                    })?
+                    else {
+                        return Ok::<_, String>(None);
+                    };
+
+                    let request_json: String = request_json
+                        .get()
+                        .map_err(|e| format!("Failed to read HIS token request JSON: {e}"))?;
+
+                    if request_json.trim() == "null" {
+                        return Ok(None);
+                    }
+
+                    Ok(Some(request_json))
+                }
+                Err(_) => {
+                    if previous_response.is_some() {
+                        return Ok(None);
+                    }
+
+                    let request: rquickjs::Object = config
+                        .get("request")
+                        .map_err(|e| format!("Missing request config in HIS token script: {e}"))?;
+
+                    let request_json: String = ctx
+                        .json_stringify(request)
+                        .map_err(|e| format!("Failed to serialize HIS token request config: {e}"))?
+                        .ok_or_else(|| {
+                            "HIS token request config serialization returned None".to_string()
+                        })?
+                        .get()
+                        .map_err(|e| format!("Failed to read HIS token request JSON: {e}"))?;
+
+                    Ok(Some(request_json))
+                }
+            }
         })?
     };
 
-    let request: ScriptRequestConfig = serde_json::from_str(&request_json)
-        .map_err(|e| format!("Invalid HIS token request config format: {e}"))?;
-
-    if request.url.trim().is_empty() {
-        return Err("HIS token request.url cannot be empty".to_string());
-    }
-
-    Ok(request)
+    request_json
+        .map(|value| parse_script_request_config(&value))
+        .transpose()
 }
 
-fn extract_script_headers(
+#[cfg_attr(not(test), allow(dead_code))]
+fn extract_script_request(
     script_code: &str,
     input_headers: &HashMap<String, String>,
-    response: &ScriptHttpResponse,
+) -> Result<ScriptRequestConfig, String> {
+    extract_next_script_request(script_code, input_headers, None, &[])?
+        .ok_or_else(|| "HIS token script did not produce an initial request config".to_string())
+}
+
+fn extract_script_headers_from_responses(
+    script_code: &str,
+    input_headers: &HashMap<String, String>,
+    responses: &[ScriptHttpResponse],
 ) -> Result<HashMap<String, String>, String> {
     let script_with_input = build_script_with_input(script_code, input_headers)?;
-    let response_json = serde_json::to_string(&json!({
-        "status": response.status,
-        "ok": (200..=299).contains(&response.status),
-        "headers": response.headers,
-        "body": response.body,
-    }))
-    .map_err(|e| format!("Failed to serialize HIS token response payload: {e}"))?;
+    let last_response = responses
+        .last()
+        .ok_or_else(|| "HIS token script did not receive any responses".to_string())?;
+    let response_json = serde_json::to_string(&serialize_script_response(last_response))
+        .map_err(|e| format!("Failed to serialize HIS token response payload: {e}"))?;
     let input_headers_json = serde_json::to_string(input_headers)
         .map_err(|e| format!("Failed to serialize request header inputs: {e}"))?;
+    let responses_json = serde_json::to_string(
+        &responses
+            .iter()
+            .map(serialize_script_response)
+            .collect::<Vec<_>>(),
+    )
+    .map_err(|e| format!("Failed to serialize HIS token response payloads: {e}"))?;
 
     let result: Value = {
         let runtime =
@@ -334,9 +487,12 @@ fn extract_script_headers(
             let request_headers_js: rquickjs::Value =
                 ctx.json_parse(input_headers_json.as_str())
                     .map_err(|e| format!("Failed to parse request header inputs: {e}"))?;
+            let responses_js: rquickjs::Value = ctx
+                .json_parse(responses_json.as_str())
+                .map_err(|e| format!("Failed to parse HIS token response payloads: {e}"))?;
 
             let result_js: rquickjs::Value = extractor
-                .call((response_js, request_headers_js))
+                .call((response_js, request_headers_js, responses_js))
                 .map_err(|e| format!("Failed to execute HIS token extractor: {e}"))?;
 
             let result_json: String = ctx
@@ -352,6 +508,23 @@ fn extract_script_headers(
     };
 
     header_strings_from_json_value("hisToken.extractor", &result)
+}
+
+#[cfg_attr(not(test), allow(dead_code))]
+fn extract_script_headers(
+    script_code: &str,
+    input_headers: &HashMap<String, String>,
+    response: &ScriptHttpResponse,
+) -> Result<HashMap<String, String>, String> {
+    extract_script_headers_from_responses(
+        script_code,
+        input_headers,
+        &[ScriptHttpResponse {
+            status: response.status,
+            headers: response.headers.clone(),
+            body: response.body.clone(),
+        }],
+    )
 }
 
 async fn send_script_request(
@@ -428,9 +601,31 @@ async fn resolve_his_token_headers(
         )
     })?;
 
-    let request = extract_script_request(&script_code, input_headers)?;
-    let response = send_script_request(provider, &request).await?;
-    let generated_headers = extract_script_headers(&script_code, input_headers, &response)?;
+    let mut responses = Vec::new();
+
+    loop {
+        if responses.len() >= HIS_TOKEN_MAX_CHAINED_REQUESTS {
+            return Err(format!(
+                "HIS token script exceeded the maximum chained request limit ({HIS_TOKEN_MAX_CHAINED_REQUESTS})"
+            ));
+        }
+
+        let request =
+            extract_next_script_request(&script_code, input_headers, responses.last(), &responses)?;
+        let Some(request) = request else {
+            break;
+        };
+
+        let response = send_script_request(provider, &request).await?;
+        responses.push(response);
+    }
+
+    if responses.is_empty() {
+        return Err("HIS token script did not produce any HTTP request".to_string());
+    }
+
+    let generated_headers =
+        extract_script_headers_from_responses(&script_code, input_headers, &responses)?;
 
     header_map_from_strings("hisToken.extractor", &generated_headers)
 }
@@ -623,5 +818,125 @@ mod tests {
         .unwrap_err();
 
         assert!(error.contains("must be a JSON object"));
+    }
+
+    #[test]
+    fn his_token_script_can_chain_requests() {
+        let input_headers = HashMap::from([
+            (
+                "getAccessTokenUrl".to_string(),
+                "https://example.com/his/access-token".to_string(),
+            ),
+            (
+                "getDynamicTokenUrl".to_string(),
+                "https://example.com/his/dynamic-token".to_string(),
+            ),
+            ("app_key".to_string(), "key-1".to_string()),
+            ("app_secret".to_string(), "secret-1".to_string()),
+            ("appid".to_string(), "app-1".to_string()),
+        ]);
+        let script = r#"({
+  nextRequest(previousResponse, requestHeaders, responses) {
+    if (responses.length === 0) {
+      return {
+        url: requestHeaders.getAccessTokenUrl,
+        method: "POST",
+        body: {
+          app_key: requestHeaders.app_key,
+          app_secret: requestHeaders.app_secret,
+        },
+      };
+    }
+
+    if (responses.length === 1) {
+      return {
+        url: requestHeaders.getDynamicTokenUrl,
+        method: "POST",
+        headers: {
+          AccessToken: previousResponse.body.accessToken,
+        },
+        body: {
+          appid: requestHeaders.appid,
+        },
+      };
+    }
+
+    return null;
+  },
+
+  extractor(lastResponse, requestHeaders, responses) {
+    return {
+      Authorization: `${requestHeaders.appid}:${responses[0].body.accessToken}:${lastResponse.body.dynamicToken}`,
+    };
+  },
+})"#;
+
+        let request_1 = extract_next_script_request(script, &input_headers, None, &[])
+            .unwrap()
+            .expect("first request");
+        assert_eq!(request_1.url, "https://example.com/his/access-token");
+        assert_eq!(
+            request_1.body,
+            Some(json!({
+                "app_key": "key-1",
+                "app_secret": "secret-1",
+            }))
+        );
+
+        let response_1 = ScriptHttpResponse {
+            status: 200,
+            headers: HashMap::new(),
+            body: json!({
+                "accessToken": "access-1",
+            }),
+        };
+
+        let request_2 = extract_next_script_request(
+            script,
+            &input_headers,
+            Some(&response_1),
+            std::slice::from_ref(&response_1),
+        )
+        .unwrap()
+        .expect("second request");
+        assert_eq!(request_2.url, "https://example.com/his/dynamic-token");
+        assert_eq!(
+            request_2.headers.get("AccessToken").map(String::as_str),
+            Some("access-1")
+        );
+        assert_eq!(
+            request_2.body,
+            Some(json!({
+                "appid": "app-1",
+            }))
+        );
+
+        let response_1 = ScriptHttpResponse {
+            status: 200,
+            headers: HashMap::new(),
+            body: json!({
+                "accessToken": "access-1",
+            }),
+        };
+        let response_2 = ScriptHttpResponse {
+            status: 200,
+            headers: HashMap::new(),
+            body: json!({
+                "dynamicToken": "dynamic-1",
+            }),
+        };
+        let responses = vec![response_1, response_2];
+
+        let request_3 =
+            extract_next_script_request(script, &input_headers, responses.last(), &responses)
+                .unwrap();
+        assert!(request_3.is_none());
+
+        let generated =
+            extract_script_headers_from_responses(script, &input_headers, &responses).unwrap();
+        assert_eq!(
+            generated.get("Authorization").map(String::as_str),
+            Some("app-1:access-1:dynamic-1")
+        );
     }
 }
