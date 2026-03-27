@@ -8,7 +8,7 @@ use super::{
     failover_switch::FailoverSwitchManager,
     log_codes::fwd as log_fwd,
     provider_router::ProviderRouter,
-    providers::{get_adapter, resolve_custom_request_headers, ProviderAdapter, ProviderType},
+    providers::{get_adapter, AuthInfo, AuthStrategy, ProviderAdapter, ProviderType},
     thinking_budget_rectifier::{rectify_thinking_budget, should_rectify_thinking_budget},
     thinking_rectifier::{
         normalize_thinking_type, rectify_anthropic_request, should_rectify_thinking_signature,
@@ -16,10 +16,13 @@ use super::{
     types::{OptimizerConfig, ProxyStatus, RectifierConfig},
     ProxyError,
 };
+use crate::commands::CopilotAuthState;
+use crate::proxy::providers::copilot_auth::CopilotAuthManager;
 use crate::{app_config::AppType, provider::Provider};
 use reqwest::Response;
 use serde_json::Value;
 use std::sync::Arc;
+use tauri::Manager;
 use tokio::sync::RwLock;
 
 /// Headers 黑名单 - 不透传到上游的 Headers
@@ -792,14 +795,27 @@ impl RequestForwarder {
         // 检查是否需要格式转换
         let needs_transform = adapter.needs_transform(provider);
 
+        // 确定有效端点
+        // GitHub Copilot API 使用 /chat/completions（无 /v1 前缀）
+        let is_copilot = provider
+            .meta
+            .as_ref()
+            .and_then(|m| m.provider_type.as_deref())
+            == Some("github_copilot")
+            || base_url.contains("githubcopilot.com");
         let effective_endpoint =
             if needs_transform && adapter.name() == "Claude" && endpoint == "/v1/messages" {
-                // 根据 api_format 选择目标端点
-                let api_format = super::providers::get_claude_api_format(provider);
-                if api_format == "openai_responses" {
-                    "/v1/responses"
+                if is_copilot {
+                    // GitHub Copilot uses /chat/completions without /v1 prefix
+                    "/chat/completions"
                 } else {
-                    "/v1/chat/completions"
+                    // 根据 api_format 选择目标端点
+                    let api_format = super::providers::get_claude_api_format(provider);
+                    if api_format == "openai_responses" {
+                        "/v1/responses"
+                    } else {
+                        "/v1/chat/completions"
+                    }
                 }
             } else {
                 endpoint
@@ -853,9 +869,22 @@ impl RequestForwarder {
 
         // 过滤黑名单 Headers，保护隐私并避免冲突
         for (key, value) in headers {
+            let key_str = key.as_str();
             if HEADER_BLACKLIST
                 .iter()
-                .any(|h| key.as_str().eq_ignore_ascii_case(h))
+                .any(|h| key_str.eq_ignore_ascii_case(h))
+            {
+                continue;
+            }
+            // Copilot 请求：过滤会由 add_auth_headers 注入的固定指纹头，
+            // 防止客户端原始头与注入头重复（reqwest header() 是追加语义）
+            if is_copilot
+                && (key_str.eq_ignore_ascii_case("user-agent")
+                    || key_str.eq_ignore_ascii_case("editor-version")
+                    || key_str.eq_ignore_ascii_case("editor-plugin-version")
+                    || key_str.eq_ignore_ascii_case("copilot-integration-id")
+                    || key_str.eq_ignore_ascii_case("x-github-api-version")
+                    || key_str.eq_ignore_ascii_case("openai-intent"))
             {
                 continue;
             }
@@ -916,7 +945,57 @@ impl RequestForwarder {
         }
 
         // 使用适配器添加认证头
-        if let Some(auth) = adapter.extract_auth(provider) {
+        if let Some(mut auth) = adapter.extract_auth(provider) {
+            // GitHub Copilot 特殊处理：从 CopilotAuthManager 获取真实 token
+            if auth.strategy == AuthStrategy::GitHubCopilot {
+                if let Some(app_handle) = &self.app_handle {
+                    let copilot_state = app_handle.state::<CopilotAuthState>();
+                    let copilot_auth: tokio::sync::RwLockReadGuard<'_, CopilotAuthManager> =
+                        copilot_state.0.read().await;
+
+                    // 从 provider.meta 获取关联的 GitHub 账号 ID（多账号支持）
+                    let account_id = provider
+                        .meta
+                        .as_ref()
+                        .and_then(|m| m.managed_account_id_for("github_copilot"));
+
+                    // 根据账号 ID 获取对应 token（向后兼容：无账号 ID 时使用第一个账号）
+                    let token_result = match &account_id {
+                        Some(id) => {
+                            log::debug!("[Copilot] 使用指定账号 {id} 获取 token");
+                            copilot_auth.get_valid_token_for_account(id).await
+                        }
+                        None => {
+                            log::debug!("[Copilot] 使用默认账号获取 token");
+                            copilot_auth.get_valid_token().await
+                        }
+                    };
+
+                    match token_result {
+                        Ok(token) => {
+                            auth = AuthInfo::new(token, AuthStrategy::GitHubCopilot);
+                            log::debug!(
+                                "[Copilot] 成功获取 Copilot token (account={})",
+                                account_id.as_deref().unwrap_or("default")
+                            );
+                        }
+                        Err(e) => {
+                            log::error!(
+                                "[Copilot] 获取 Copilot token 失败 (account={}): {e}",
+                                account_id.as_deref().unwrap_or("default")
+                            );
+                            return Err(ProxyError::AuthError(format!(
+                                "GitHub Copilot 认证失败: {e}"
+                            )));
+                        }
+                    }
+                } else {
+                    log::error!("[Copilot] AppHandle 不可用");
+                    return Err(ProxyError::AuthError(
+                        "GitHub Copilot 认证不可用（无 AppHandle）".to_string(),
+                    ));
+                }
+            }
             request = adapter.add_auth_headers(request, &auth);
         }
 
