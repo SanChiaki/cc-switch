@@ -15,6 +15,7 @@ use crate::provider::Provider;
 use crate::proxy::providers::transform::anthropic_to_openai;
 use crate::proxy::providers::copilot_auth;
 use crate::proxy::providers::{get_adapter, AuthInfo, AuthStrategy};
+use crate::proxy::providers::resolve_custom_request_headers;
 
 /// 健康状态枚举
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
