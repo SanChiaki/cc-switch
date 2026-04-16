@@ -543,11 +543,8 @@ async fn send_script_request(
         )
     })?;
 
-    let proxy_config = provider
-        .meta
-        .as_ref()
-        .and_then(|meta| meta.proxy_config.as_ref());
-    let client = crate::proxy::http_client::get_for_provider(proxy_config);
+    let _ = provider;
+    let client = crate::proxy::http_client::get();
     let timeout = Duration::from_secs(config.timeout_secs.unwrap_or(10).clamp(2, 30));
 
     let mut request = client.request(method, &config.url).timeout(timeout);

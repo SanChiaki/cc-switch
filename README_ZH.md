@@ -4,10 +4,10 @@
 
 ### Claude Code、Codex、Gemini CLI、OpenCode 和 OpenClaw 的全方位管理工具
 
-[![Version](https://img.shields.io/badge/version-3.12.3-blue.svg)](https://github.com/farion1231/cc-switch/releases)
+[![Version](https://img.shields.io/github/v/release/farion1231/cc-switch?color=blue&label=version)](https://github.com/farion1231/cc-switch/releases)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](https://github.com/farion1231/cc-switch/releases)
 [![Built with Tauri](https://img.shields.io/badge/built%20with-Tauri%202-orange.svg)](https://tauri.app/)
-[![Downloads](https://img.shields.io/endpoint?url=https://api.pinstudios.net/api/badges/downloads/farion1231/cc-switch/total)](https://github.com/farion1231/cc-switch/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/farion1231/cc-switch/total)](https://github.com/farion1231/cc-switch/releases/latest)
 
 <a href="https://trendshift.io/repositories/15372" target="_blank"><img src="https://trendshift.io/api/badge/repositories/15372" alt="farion1231%2Fcc-switch | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
 
@@ -16,6 +16,8 @@
 </div>
 
 ## ❤️赞助商
+
+> [想出现在这里？](mailto:farion1231@gmail.com)
 
 <details open>
 <summary>点击折叠</summary>
@@ -35,13 +37,18 @@ MiniMax M2.7 是 MiniMax 首个深度参与自我迭代的模型，可自主构�
 </tr>
 
 <tr>
-<td width="180"><a href="https://cloud.siliconflow.cn/i/drGuwc9k"><img src="assets/partners/logos/silicon_zh.jpg" alt="SiliconFlow" width="150"></a></td>
-<td>感谢硅基流动赞助了本项目！硅基流动是一个高性能 AI 基础设施与模型 API 平台，一站式提供语言、语音、图像、视频等多模态模型的快速、可靠访问。平台支持按量计费、丰富的多模态模型选择、高速推理和企业级稳定性，帮助开发者和团队更高效地构建和扩展 AI 应用。通过<a href="https://cloud.siliconflow.cn/i/drGuwc9k">此链接</a>注册并完成实名认证，即可获得 ¥20 奖励金，可在平台内跨模型使用。硅基流动现已兼容 OpenClaw，用户可接入硅基流动 API Key 免费调用主流 AI 模型。</td>
+<td width="180"><a href="https://aigocode.com/invite/CC-SWITCH"><img src="assets/partners/logos/aigocode.png" alt="AIGoCode" width="150"></a></td>
+<td>感谢 AIGoCode 赞助了本项目！AIGoCode 是一个集成了 Claude Code、Codex 以及 Gemini 最新模型的一站式平台，为你提供稳定、高效且高性价比的AI编程服务。本站提供灵活的订阅计划，零封号风险，国内直连，无需魔法，极速响应。AIGoCode 为 CC Switch 的用户提供了特别福利，通过<a href="https://aigocode.com/invite/CC-SWITCH">此链接</a>注册的用户首次充值可以获得额外10%奖励额度！</td>
 </tr>
 
 <tr>
-<td width="180"><a href="https://aigocode.com/invite/CC-SWITCH"><img src="assets/partners/logos/aigocode.png" alt="AIGoCode" width="150"></a></td>
-<td>感谢 AIGoCode 赞助了本项目！AIGoCode 是一个集成了 Claude Code、Codex 以及 Gemini 最新模型的一站式平台，为你提供稳定、高效且高性价比的AI编程服务。本站提供灵活的订阅计划，零封号风险，国内直连，无需魔法，极速响应。AIGoCode 为 CC Switch 的用户提供了特别福利，通过<a href="https://aigocode.com/invite/CC-SWITCH">此链接</a>注册的用户首次充值可以获得额外10%奖励额度！</td>
+<td width="180"><a href="https://www.shengsuanyun.com/?from=CH_4HHXMRYF"><img src="assets/partners/logos/shengsuanyun.svg" alt="Shengsuanyun" width="150"></a></td>
+<td>感谢胜算云赞助了本项目！胜算云是专为AI Native Teams服务的超级工厂，工业级AI任务并行执行平台，模型商城集采直供聚合接入了Claude、Chatgpt、Gemini等海内外LLM及图片视频多媒体模型算力，绝无逆向掺水、全站模型SLA可用性高达99.7%、<a href="https://watch.shengsuanyun.com/status/shengsuanyun">监测接口</a>日常全绿。更有企业级专属定制网关，实现团队精细化成本与权限管控，智能路由+安全防护+BYOK企业自带密钥托管。平台按量及tokens plan（即将上线）计费，可开票，使用<a href="https://www.shengsuanyun.com/?from=CH_4HHXMRYF">此链接</a>注册新用户可获10元模力及首充10%赠送。</td>
+</tr>
+
+<tr>
+<td width="180"><a href="https://cloud.siliconflow.cn/i/drGuwc9k"><img src="assets/partners/logos/silicon_zh.jpg" alt="SiliconFlow" width="150"></a></td>
+<td>感谢硅基流动赞助了本项目！硅基流动是一个高性能 AI 基础设施与模型 API 平台，一站式提供语言、语音、图像、视频等多模态模型的快速、可靠访问。平台支持按量计费、丰富的多模态模型选择、高速推理和企业级稳定性，帮助开发者和团队更高效地构建和扩展 AI 应用。通过<a href="https://cloud.siliconflow.cn/i/drGuwc9k">此链接</a>注册并完成实名认证，即可获得 ¥20 奖励金，可在平台内跨模型使用。硅基流动现已兼容 OpenClaw，用户可接入硅基流动 API Key 免费调用主流 AI 模型。</td>
 </tr>
 
 <tr>
@@ -67,18 +74,18 @@ Claude Code / Codex / Gemini 官方渠道低至 3.8 / 0.2 / 0.9 折，充值更�
 </tr>
 
 <tr>
-<td width="180"><a href="https://www.right.codes/register?aff=CCSWITCH"><img src="assets/partners/logos/rightcode.jpg" alt="RightCode" width="150"></a></td>
-<td>感谢 Right Code 赞助了本项目！Right Code 稳定提供 Claude Code、Codex、Gemini 等模型的中转服务。主打<strong>极高性价比</strong>的Codex包月套餐，<strong>提供额度转结，套餐当天用不完的额度，第二天还能接着用！</strong>充值即可开票，企业、团队用户一对一对接。同时为 CC Switch 的用户提供了特别优惠：通过<a href="https://www.right.codes/register?aff=CCSWITCH">此链接</a>注册，每次充值均可获得实付金额25%的按量额度！</td>
-</tr>
-
-<tr>
 <td width="180"><a href="https://aicoding.sh/i/CCSWITCH"><img src="assets/partners/logos/aicoding.jpg" alt="AICoding" width="150"></a></td>
 <td>感谢 AICoding.sh 赞助了本项目！AICoding.sh —— 全球大模型 API 超值中转服务！Claude Code 1.9 折，GPT 0.1 折，已为数百家企业提供高性价比 AI 服务。支持 Claude Code、GPT、Gemini 及国内主流模型，企业级高并发、极速开票、7×24 专属技术支持，通过<a href="https://aicoding.sh/i/CCSWITCH">此链接</a> 注册的 CC Switch 用户，首充可享受九折优惠！</td>
 </tr>
 
 <tr>
-<td width="180"><a href="https://crazyrouter.com/register?aff=OZcm&ref=cc-switch"><img src="assets/partners/logos/crazyrouter.jpg" alt="Crazyrouter" width="150"></a></td>
+<td width="180"><a href="https://crazyrouter.com/register?aff=OZcm&ref=cc-switch"><img src="assets/partners/logos/crazyrouter.png" alt="Crazyrouter" width="150"></a></td>
 <td>感谢 Crazyrouter 赞助了本项目！Crazyrouter 是一个高性能 AI API 聚合平台——一个 API Key 即可访问 300+ 模型，包括 Claude Code、Codex、Gemini CLI 等。全部模型低至官方定价的 55%，支持自动故障转移、智能路由和无限并发。Crazyrouter 为 CC Switch 用户提供了专属优惠：通过<a href="https://crazyrouter.com/register?aff=OZcm&ref=cc-switch">此链接</a>注册即可获得 <strong>$2 免费额度</strong>，首次充值时输入优惠码 `CCSWITCH` 还可获得额外 <strong>30% 奖励额度</strong>！</td>
+</tr>
+
+<tr>
+<td width="180"><a href="https://www.right.codes/register?aff=CCSWITCH"><img src="assets/partners/logos/rightcode.jpg" alt="RightCode" width="150"></a></td>
+<td>感谢 Right Code 赞助了本项目！Right Code 稳定提供 Claude Code、Codex、Gemini 等模型的中转服务。主打<strong>极高性价比</strong>的Codex包月套餐，<strong>提供额度转结，套餐当天用不完的额度，第二天还能接着用！</strong>充值即可开票，企业、团队用户一对一对接。同时为 CC Switch 的用户提供了特别优惠：通过<a href="https://www.right.codes/register?aff=CCSWITCH">此链接</a>注册，每次充值均可获得实付金额25%的按量额度！</td>
 </tr>
 
 <tr>
@@ -90,15 +97,30 @@ Claude Code / Codex / Gemini 官方渠道低至 3.8 / 0.2 / 0.9 折，充值更�
 <td width="180"><a href="https://www.openclaudecode.cn/register?aff=aOYQ"><img src="assets/partners/logos/mikubanner.svg" alt="Micu" width="150"></a></td>
 <td>感谢 米醋API 赞助了本项目！米醋API 是一家致力于提供极致性价比与高稳定性的全球大模型中转服务商。米醋API 背后有实体企业做核心保障，杜绝跑路风险，支持极速正规开票！我们主打“试错零成本”：1 元起充低门槛，0 手续费随时退款！米醋API 为本软件的用户提供了特别优惠，使用<a href="https://www.openclaudecode.cn/register?aff=aOYQ">此链接</a>注册并在充值时填写"ccswitch"优惠码可享九折优惠！</td>
 </tr>
-
 <tr>
-<td width="180"><a href="https://x-code.cc/register?aff=IbPp"><img src="assets/partners/logos/xcodeapi.png" alt="XCodeAPI" width="150"></a></td>
-<td>感谢 XCodeAPI 赞助了本项目！XCodeAPI 为本软件的用户提供特别福利，使用<a href="https://x-code.cc/register?aff=IbPp">此链接</a>注册后首单加赠10%的额度!(联系站长领取)</td>
+<td width="180"><a href="https://lemondata.cc/r/FFX1ZDUP"><img src="assets/partners/logos/lemondata.png" alt="LemonData" width="150"></a></td>
+<td>感谢 LemonData 赞助了本项目！LemonData 是一个高性能 AI API 聚合平台——一个 API Key 即可访问 GPT、Claude、Gemini、DeepSeek 等 300+ 模型。所有模型定价为官方价格的 30%-70%，支持自动故障转移、智能路由和无限并发。新用户注册即获 $1 免费额度——通过<a href="https://lemondata.cc/r/FFX1ZDUP">此链接</a>注册即可领取奖励，立即开始开发！</td>
 </tr>
+
 
 <tr>
 <td width="180"><a href="https://ctok.ai"><img src="assets/partners/logos/ctok.png" alt="CTok" width="150"></a></td>
 <td>感谢 CTok.ai 赞助了本项目！CTok.ai 致力于打造一站式 AI 编程工具服务平台。我们提供 Claude Code 专业套餐及技术社群服务，同时支持 Google Gemini 和 OpenAI Codex。通过精心设计的套餐方案和专业的技术社群，为开发者提供稳定的服务保障和持续的技术支持，让 AI 辅助编程真正成为开发者的生产力工具。点击<a href="https://ctok.ai">这里</a>注册！</td>
+</tr>
+
+<tr>
+<td width="180"><a href="https://chefshop.ai"><img src="assets/partners/logos/chefshop.png" alt="ChefShop" width="150"></a></td>
+<td>感谢  厨师长AI小铺 赞助了本项目！厨师长AI小铺 是一家专为 AI 重度订阅用户量身定制的优质账号服务商。平台提供涵盖 ChatGPT Plus/Pro、Claude Max、Grok Super/Heavy 以及 Gemini  等主流大模型的官方代充与稳定成品账号服务。点击<a href="https://chefshop.ai">这里</a>购买！</td>
+</tr>
+
+<tr>
+<td width="180"><a href="https://vibecodingapi.ai"><img src="assets/partners/logos/lioncc.png" alt="LionCC" width="150"></a></td>
+<td>感谢 LionCC 狮子API 赞助了本项目！LionCC 专为追求极致开发体验的”Vibe Coders”而生。我们提供稳定、低延迟、优惠价格的 Claude Code、Codex 及 OpenClaw 算力服务，可节约 50% 成本。注册后添加客服微信 HSQBJ088888888，发暗号 cc-switch 备注即可送 10 美金额度（1000 万 token 算力）。其他项目合作关注博客 @LionCC.ai，点击<a href=”https://vibecodingapi.ai”>这里</a>注册！</td>
+</tr>
+
+<tr>
+<td width="180"><a href="https://ddshub.short.gy/ccswitch"><img src="assets/partners/logos/dds.png" alt="DDS" width="150"></a></td>
+<td>感谢 DDS 赞助本项目！呆呆兽是一家专注 Claude 的可靠高效 API 中转站，为个人和企业用户提供极具性价比的国内 Claude 直连加速服务。支持 Claude Haiku / Opus / Sonnet 等满血模型。充值满 1000 元即可开具发票，企业客户更可享受定制化分组和技术支持服务。CC Switch 用户专属福利：通过<a href="https://ddshub.short.gy/ccswitch">此链接</a>注册后，首单充值可额外赠送 10% 额度（充值后请联系群主领取）！</td>
 </tr>
 
 </table>
@@ -290,14 +312,8 @@ paru -S cc-switch-bin
 - `CC-Switch-v{版本号}-Linux.deb`（Debian/Ubuntu）
 - `CC-Switch-v{版本号}-Linux.rpm`（Fedora/RHEL/openSUSE）
 - `CC-Switch-v{版本号}-Linux.AppImage`（通用）
-- `CC-Switch-v{版本号}-Linux.flatpak`（Flatpak）
 
-Flatpak 安装与运行：
-
-```bash
-flatpak install --user ./CC-Switch-v{版本号}-Linux.flatpak
-flatpak run com.ccswitch.desktop
-```
+> **Flatpak**：官方 Release 不包含 Flatpak 包。如需使用，可从 `.deb` 自行构建 — 参见 [`flatpak/README.md`](flatpak/README.md)。
 
 <details>
 <summary><strong>架构总览</strong></summary>
@@ -336,7 +352,7 @@ flatpak run com.ccswitch.desktop
 - **ProviderService**：供应商增删改查、切换、回填、排序
 - **McpService**：MCP 服务器管理、导入导出、live 文件同步
 - **ProxyService**：本地 Proxy 模式，支持热切换和格式转换
-- **SessionManager**：Claude Code 对话历史浏览
+- **SessionManager**：全应用会话历史浏览
 - **ConfigService**：配置导入导出、备份轮换
 - **SpeedtestService**：API 端点延迟测量
 

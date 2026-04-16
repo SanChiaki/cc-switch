@@ -1,10 +1,17 @@
-import { useMutation, useQuery, useQueryClient, keepPreviousData } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  keepPreviousData,
+} from "@tanstack/react-query";
 import {
   skillsApi,
   type SkillBackupEntry,
   type DiscoverableSkill,
   type ImportSkillSelection,
   type InstalledSkill,
+  type SkillUpdateInfo,
+  type SkillsShSearchResult,
 } from "@/lib/api/skills";
 import type { AppId } from "@/lib/api/types";
 
@@ -108,13 +115,10 @@ export function useInstallSkill() {
 export function useUninstallSkill() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({
-      id,
-      skillKey,
-    }: {
-      id: string;
-      skillKey: string;
-    }) => skillsApi.uninstallUnified(id).then((result) => ({ ...result, skillKey })),
+    mutationFn: ({ id, skillKey }: { id: string; skillKey: string }) =>
+      skillsApi
+        .uninstallUnified(id)
+        .then((result) => ({ ...result, skillKey })),
     onSuccess: ({ skillKey }, _vars) => {
       // 直接更新 installed 缓存，移除该 skill
       queryClient.setQueryData<InstalledSkill[]>(
@@ -281,6 +285,68 @@ export function useInstallSkillsFromZip() {
   });
 }
 
+// ========== 更新检测 ==========
+
+/**
+ * 检查 Skills 更新（手动触发）
+ */
+export function useCheckSkillUpdates() {
+  return useQuery({
+    queryKey: ["skills", "updates"],
+    queryFn: () => skillsApi.checkUpdates(),
+    enabled: false,
+    staleTime: 5 * 60 * 1000,
+  });
+}
+
+/**
+ * 更新单个 Skill
+ */
+export function useUpdateSkill() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => skillsApi.updateSkill(id),
+    onSuccess: (updatedSkill) => {
+      queryClient.setQueryData<InstalledSkill[]>(
+        ["skills", "installed"],
+        (oldData) => {
+          if (!oldData) return [updatedSkill];
+          return oldData.map((s) =>
+            s.id === updatedSkill.id ? updatedSkill : s,
+          );
+        },
+      );
+      queryClient.setQueryData<SkillUpdateInfo[]>(
+        ["skills", "updates"],
+        (oldData) => {
+          if (!oldData) return oldData;
+          return oldData.filter((u) => u.id !== updatedSkill.id);
+        },
+      );
+    },
+  });
+}
+
+// ========== skills.sh 搜索 ==========
+
+/**
+ * 搜索 skills.sh 公共目录
+ * 使用 300ms staleTime 和 keepPreviousData 实现平滑搜索体验
+ */
+export function useSearchSkillsSh(
+  query: string,
+  limit: number,
+  offset: number,
+) {
+  return useQuery({
+    queryKey: ["skills", "skillssh", query, limit, offset],
+    queryFn: () => skillsApi.searchSkillsSh(query, limit, offset),
+    enabled: query.length >= 2,
+    staleTime: 5 * 60 * 1000,
+    placeholderData: keepPreviousData,
+  });
+}
+
 // ========== 辅助类型 ==========
 
 export type {
@@ -288,5 +354,7 @@ export type {
   DiscoverableSkill,
   ImportSkillSelection,
   SkillBackupEntry,
+  SkillUpdateInfo,
+  SkillsShSearchResult,
   AppId,
 };

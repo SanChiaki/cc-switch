@@ -4,10 +4,10 @@
 
 ### Claude Code、Codex、Gemini CLI、OpenCode、OpenClaw のオールインワン管理ツール
 
-[![Version](https://img.shields.io/badge/version-3.12.3-blue.svg)](https://github.com/farion1231/cc-switch/releases)
+[![Version](https://img.shields.io/github/v/release/farion1231/cc-switch?color=blue&label=version)](https://github.com/farion1231/cc-switch/releases)
 [![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-lightgrey.svg)](https://github.com/farion1231/cc-switch/releases)
 [![Built with Tauri](https://img.shields.io/badge/built%20with-Tauri%202-orange.svg)](https://tauri.app/)
-[![Downloads](https://img.shields.io/endpoint?url=https://api.pinstudios.net/api/badges/downloads/farion1231/cc-switch/total)](https://github.com/farion1231/cc-switch/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/farion1231/cc-switch/total)](https://github.com/farion1231/cc-switch/releases/latest)
 
 <a href="https://trendshift.io/repositories/15372" target="_blank"><img src="https://trendshift.io/api/badge/repositories/15372" alt="farion1231%2Fcc-switch | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
 
@@ -16,6 +16,8 @@
 </div>
 
 ## ❤️スポンサー
+
+> [ここに掲載しませんか？](mailto:farion1231@gmail.com)
 
 <details open>
 <summary>クリックで折りたたむ</summary>
@@ -35,13 +37,18 @@ MiniMax-M2.7 は、自律的進化と実世界の生産性向上のために設�
 </tr>
 
 <tr>
-<td width="180"><a href="https://cloud.siliconflow.cn/i/drGuwc9k"><img src="assets/partners/logos/silicon_en.jpg" alt="SiliconFlow" width="150"></a></td>
-<td>SiliconFlow のご支援に感謝します！SiliconFlow は高性能 AI インフラストラクチャおよびモデル API プラットフォームで、言語・音声・画像・動画モデルへの高速かつ信頼性の高いアクセスをワンストップで提供します。従量課金制、豊富なマルチモーダルモデル対応、高速推論、エンタープライズグレードの安定性を備え、開発者やチームがより効率的に AI アプリケーションを構築・拡張できるようサポートします。<a href="https://cloud.siliconflow.cn/i/drGuwc9k">このリンク</a>から登録し、本人確認を完了すると、プラットフォーム内の全モデルで利用可能な ¥20 のボーナスクレジットが付与されます。SiliconFlow は OpenClaw にも対応しており、SiliconFlow の API キーを接続することで主要な AI モデルを無料で呼び出すことができます。</td>
+<td width="180"><a href="https://aigocode.com/invite/CC-SWITCH"><img src="assets/partners/logos/aigocode.png" alt="AIGoCode" width="150"></a></td>
+<td>本プロジェクトは AIGoCode のスポンサー提供でお届けしています。AIGoCode は、Claude Code・Codex・最新の Gemini モデルを統合したオールインワンのAIコーディングプラットフォームで、安定性・高速性・コストパフォーマンスに優れた開発サービスを提供します。柔軟なサブスクリプションプランを備え、レスポンスも非常に高速です。さらに、CC Switch ユーザー向けの特典として、<a href="https://aigocode.com/invite/CC-SWITCH">このリンク</a>から登録すると、初回チャージ時に10％分のボーナスクレジットが付与されます！</td>
 </tr>
 
 <tr>
-<td width="180"><a href="https://aigocode.com/invite/CC-SWITCH"><img src="assets/partners/logos/aigocode.png" alt="AIGoCode" width="150"></a></td>
-<td>本プロジェクトは AIGoCode のスポンサー提供でお届けしています。AIGoCode は、Claude Code・Codex・最新の Gemini モデルを統合したオールインワンのAIコーディングプラットフォームで、安定性・高速性・コストパフォーマンスに優れた開発サービスを提供します。柔軟なサブスクリプションプランを備え、レスポンスも非常に高速です。さらに、CC Switch ユーザー向けの特典として、<a href="https://aigocode.com/invite/CC-SWITCH">このリンク</a>から登録すると、初回チャージ時に10％分のボーナスクレジットが付与されます！</td>
+<td width="180"><a href="https://www.shengsuanyun.com/?from=CH_4HHXMRYF"><img src="assets/partners/logos/shengsuanyun.svg" alt="Shengsuanyun" width="150"></a></td>
+<td>胜算雲（Shengsuanyun）のご支援に感謝します！胜算雲は AI ネイティブチーム向けのスーパーファクトリーであり、産業グレードの AI タスク並列実行プラットフォームです。モデルマーケットプレイスでは Claude、ChatGPT、Gemini をはじめとする国内外の LLM およびマルチメディアモデルの計算リソースを集約・直接提供。リバースエンジニアリングや品質低下は一切なく、プラットフォーム全体のモデル SLA 可用性は 99.7% に達し、<a href="https://watch.shengsuanyun.com/status/shengsuanyun">監視ダッシュボード</a>は常時グリーン表示です。さらにエンタープライズ向けカスタムゲートウェイを提供し、チームのきめ細かなコスト・権限管理、スマートルーティング、セキュリティ保護、BYOK（自社キー持ち込み）ホスティングを実現します。従量課金およびトークンプラン（近日公開）対応で、請求書発行にも対応。<a href="https://www.shengsuanyun.com/?from=CH_4HHXMRYF">このリンク</a>から新規登録すると 10 元分のクレジットと初回チャージ 10% ボーナスが付与されます。</td>
+</tr>
+
+<tr>
+<td width="180"><a href="https://cloud.siliconflow.cn/i/drGuwc9k"><img src="assets/partners/logos/silicon_en.jpg" alt="SiliconFlow" width="150"></a></td>
+<td>SiliconFlow のご支援に感謝します！SiliconFlow は高性能 AI インフラストラクチャおよびモデル API プラットフォームで、言語・音声・画像・動画モデルへの高速かつ信頼性の高いアクセスをワンストップで提供します。従量課金制、豊富なマルチモーダルモデル対応、高速推論、エンタープライズグレードの安定性を備え、開発者やチームがより効率的に AI アプリケーションを構築・拡張できるようサポートします。<a href="https://cloud.siliconflow.cn/i/drGuwc9k">このリンク</a>から登録し、本人確認を完了すると、プラットフォーム内の全モデルで利用可能な ¥20 のボーナスクレジットが付与されます。SiliconFlow は OpenClaw にも対応しており、SiliconFlow の API キーを接続することで主要な AI モデルを無料で呼び出すことができます。</td>
 </tr>
 
 <tr>
@@ -66,9 +73,6 @@ Claude Code / Codex / Gemini 公式チャンネルが最安で元価格の 38% /
 </tr>
 
 <tr>
-<td width="180"><a href="https://www.right.codes/register?aff=CCSWITCH"><img src="assets/partners/logos/rightcode.jpg" alt="RightCode" width="150"></a></td>
-<td>本プロジェクトへのご支援として、Right Code にご協賛いただき誠にありがとうございます。Right Code は、Claude Code、Codex、Gemini などのモデルに対応した中継（プロキシ）サービスを安定して提供しています。特に高いコストパフォーマンスを誇る Codex の月額プランを主力としており、<strong>未使用分の利用枠を翌日に繰り越して利用できる（繰越対応）</strong>点が特長です。チャージ（入金）後に請求書の発行が可能で、企業・チーム向けには専任担当による個別対応も行っています。さらに CC Switch ユーザー向けの特別優待として、<a href="https://www.right.codes/register?aff=CCSWITCH">こちらのリンク</a>からご登録いただくと、チャージのたびに実支払額の 25% 相当の従量課金クレジットが付与されます。</td>
-</tr>
 
 <tr>
 <td width="180"><a href="https://aicoding.sh/i/CCSWITCH"><img src="assets/partners/logos/aicoding.jpg" alt="AICoding" width="150"></a></td>
@@ -76,8 +80,13 @@ Claude Code / Codex / Gemini 公式チャンネルが最安で元価格の 38% /
 </tr>
 
 <tr>
-<td width="180"><a href="https://crazyrouter.com/register?aff=OZcm&ref=cc-switch"><img src="assets/partners/logos/crazyrouter.jpg" alt="Crazyrouter" width="150"></a></td>
+<td width="180"><a href="https://crazyrouter.com/register?aff=OZcm&ref=cc-switch"><img src="assets/partners/logos/crazyrouter.png" alt="Crazyrouter" width="150"></a></td>
 <td>Crazyrouter のご支援に感謝します！Crazyrouter は高性能 AI API アグリゲーションプラットフォームです。1 つの API キーで Claude Code、Codex、Gemini CLI など 300 以上のモデルにアクセス可能。全モデルが公式価格の 55% で利用でき、自動フェイルオーバー、スマートルーティング、無制限同時接続に対応。CC Switch ユーザー向けの限定特典：<a href="https://crazyrouter.com/register?aff=OZcm&ref=cc-switch">こちらのリンク</a>から登録すると <strong>$2 の無料クレジット</strong> を即時進呈。さらに初回チャージ時にプロモコード `CCSWITCH` を入力すると <strong>30% のボーナスクレジット</strong> が追加されます！</td>
+</tr>
+
+<tr>
+<td width="180"><a href="https://www.right.codes/register?aff=CCSWITCH"><img src="assets/partners/logos/rightcode.jpg" alt="RightCode" width="150"></a></td>
+<td>本プロジェクトへのご支援として、Right Code にご協賛いただき誠にありがとうございます。Right Code は、Claude Code、Codex、Gemini などのモデルに対応した中継（プロキシ）サービスを安定して出しています。特に高いコストパフォーマンスを誇る Codex の月刊プランを主力としており、<strong>未使用分の利用枠を翌日に繰り越して利用できる（繰越対応）</strong>점이特长です。チャージ（入金）後に請求書の発行が可能で、企業・チーム向けには専任担当による個別対応も行っています。さらに CC Switch ユーザー向けの特別優待として、<a href="https://www.right.codes/register?aff=CCSWITCH">こちらのリンク</a>からご登録くと、チャージのたびに実支払額の 25% 相当の従量課金クレジットが付与されます。</td>
 </tr>
 
 <tr>
@@ -89,15 +98,32 @@ Claude Code / Codex / Gemini 公式チャンネルが最安で元価格の 38% /
 <td width="180"><a href="https://www.openclaudecode.cn/register?aff=aOYQ"><img src="assets/partners/logos/mikubanner.svg" alt="Micu" width="150"></a></td>
 <td>Micu API のご支援に感謝します！Micu API は、最高のコストパフォーマンスと高い安定性を追求するグローバル大規模言語モデル中継サービスプロバイダーです。法人企業がバックアップしており、サービス停止のリスクを排除、迅速な正規請求書発行に対応！「試行コストゼロ」をモットーに、最低 1 元からチャージ可能で手数料無料、いつでも返金可能！CC Switch ユーザー向けの限定特典：<a href="https://www.openclaudecode.cn/register?aff=aOYQ">こちらのリンク</a>から登録し、チャージ時にプロモコード「ccswitch」を入力すると <strong>10% 割引</strong> が適用されます！</td>
 </tr>
-
 <tr>
-<td width="180"><a href="https://x-code.cc/register?aff=IbPp"><img src="assets/partners/logos/xcodeapi.png" alt="XCodeAPI" width="150"></a></td>
-<td>XCodeAPI のご支援に感謝します！CC Switch ユーザー向けの特別特典：<a href="https://x-code.cc/register?aff=IbPp">こちらのリンク</a>から登録すると、初回注文で 10% の追加クレジットボーナスがもらえます！（サイト管理者に連絡して受け取りください）</td>
+<td width="180"><a href="https://lemondata.cc/r/FFX1ZDUP"><img src="assets/partners/logos/lemondata.png" alt="LemonData" width="150"></a></td>
+<td>LemonData のご支援に感謝します！LemonData は高性能 AI API アグリゲーションプラットフォームで、GPT、Claude、Gemini、DeepSeek など 300 以上のモデルに 1 つの API キーでアクセス可能。全モデルが公式価格の 30〜70% オフで自動フェイルオーバー、スマートルーティング、無制限同時接続に対応。新規ユーザーは登録だけで即座に $1 の無料クレジットを獲得 — <a href="https://lemondata.cc/r/FFX1ZDUP">こちらのリンク</a>から登録してボーナスを獲得し、すぐに開発を始めましょう！</td>
 </tr>
+
 
 <tr>
 <td width="180"><a href="https://ctok.ai"><img src="assets/partners/logos/ctok.png" alt="CTok" width="150"></a></td>
 <td>CTok.ai のご支援に感謝します！CTok.ai はワンストップ AI プログラミングツールサービスプラットフォームの構築に取り組んでいます。Claude Code のプロフェッショナルプランと技術コミュニティサービスを提供し、Google Gemini や OpenAI Codex にも対応しています。丁寧に設計されたプランと専門的な技術コミュニティを通じて、開発者に安定したサービス保証と継続的な技術サポートを提供し、AI アシストプログラミングを真の生産性ツールにします。<a href="https://ctok.ai">こちら</a>から登録してください！</td>
+</tr>
+
+<tr>
+<td width="180"><a href="https://chefshop.ai"><img src="assets/partners/logos/chefshop.png" alt="ChefShop" width="150"></a></td>
+<td>ChefShop AI のご支援に感謝します！ChefShop AI は、AI ヘビーユーザー向けにカスタマイズされたプレミアムアカウントサービスプロバイダーです。ChatGPT Plus/Pro、Claude Max、Grok Super/Heavy、Gemini など主流の大規模モデルの公式チャージと安定したアカウントサービスを提供しています。<a href="https://chefshop.ai">こちら</a>から購入してください！</td>
+</tr>
+
+<tr>
+<td width="180"><a href="https://vibecodingapi.ai"><img src="assets/partners/logos/lioncc.png" alt="LionCC" width="150"></a></td>
+<td>LionCC のご支援に感謝します！LionCC は究極の開発体験を追求する「Vibe Coders」のために生まれました。Claude Code、Codex、OpenClaw 向けに安定・低遅延・お得な価格の計算リソースサービスを提供し、最大 50% のコスト削減を実現します。登録後、カスタマーサービスの WeChat（HSQBJ088888888）を追加し、合言葉「cc-switch」を送信すると、10 ドル分のクレジット（1,000 万トークン）がもらえます。その他のコラボレーションについてはブログ @LionCC.ai をフォローしてください。<a href="https://vibecodingapi.ai">こちら</a>から登録してください！</td>
+</tr>
+
+<tr>
+<td width="180"><a href="https://ddshub.short.gy/ccswitch"><img src="assets/partners/logos/dds.png" alt="DDS" width="150"></a></td>
+<td>本プロジェクトのスポンサーである DDS に感謝いたします！ DDS（呆呆獣 / DDS Hub）は、Claude に特化した信頼性とパフォーマンスの高い API プロキシサービスです。個人および企業ユーザーの皆様に、圧倒的なコストパフォーマンスを誇る Claude 直結アクセラレーションサービスを提供しています。Claude Haiku / Opus / Sonnet などのフルスペックモデルを完全サポートし、安定した低遅延のアクセスを実現します。
+1,000人民元以上のチャージで領収書（発票）の発行が可能です。さらに、企業のお客様にはカスタマイズされたグループ管理や専用テクニカルサポートをご提供しています。
+CC Switch ユーザー限定特典： 専用リンクからご<a href="https://ddshub.short.gy/ccswitch">登録</a>いただくと、初回チャージ時に 10% の追加ボーナスクレジット をプレゼントいたします！（※チャージ完了後、グループ管理人へご連絡の上お受け取りください。）</td>
 </tr>
 
 </table>
@@ -184,9 +210,9 @@ CC Switch には「共有設定スニペット」機能があり、APIキーや�
 </details>
 
 <details>
-<summary><strong>macOS で「開発元を確認できません」と表示されます。どうすればよいですか？</strong></summary>
+<summary><strong>macOS のインストールについて</strong></summary>
 
-開発者が Apple Developer アカウントをまだ取得していないためです（登録手続き中）。警告を閉じてから、**システム設定 → プライバシーとセキュリティ → このまま開く**をクリックしてください。以降は通常通り起動できます。
+CC Switch の macOS 版は Apple によるコード署名と公証が完了しています。直接ダウンロードしてインストールできます — 追加の手順は不要です。`.dmg` インストーラの使用を推奨します。
 
 </details>
 
@@ -287,14 +313,8 @@ paru -S cc-switch-bin
 - `CC-Switch-v{version}-Linux.deb`（Debian/Ubuntu）
 - `CC-Switch-v{version}-Linux.rpm`（Fedora/RHEL/openSUSE）
 - `CC-Switch-v{version}-Linux.AppImage`（汎用）
-- `CC-Switch-v{version}-Linux.flatpak`（Flatpak）
 
-Flatpak のインストールと起動：
-
-```bash
-flatpak install --user ./CC-Switch-v{version}-Linux.flatpak
-flatpak run com.ccswitch.desktop
-```
+> **Flatpak**：公式リリースには含まれていません。`.deb` から自分でビルドできます — 手順は [`flatpak/README.md`](flatpak/README.md) を参照してください。
 
 <details>
 <summary><strong>アーキテクチャ概要</strong></summary>
@@ -333,7 +353,7 @@ flatpak run com.ccswitch.desktop
 - **ProviderService**: プロバイダの CRUD、切り替え、バックフィル、ソート
 - **McpService**: MCP サーバー管理、インポート/エクスポート、ライブファイル同期
 - **ProxyService**: ローカル Proxy モードのホットスイッチとフォーマット変換
-- **SessionManager**: Claude Code の会話履歴閲覧
+- **SessionManager**: 対応する全アプリの会話履歴閲覧
 - **ConfigService**: 設定のインポート/エクスポート、バックアップローテーション
 - **SpeedtestService**: API エンドポイントの遅延計測
 
